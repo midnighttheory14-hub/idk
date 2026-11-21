@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Starring · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  /* Starring (Guess by Cast): one phone. The hero, the heroine and the music director appear; everyone shouts the movie. */
+  :root{--c:#8e1f33;--ct:#d4566b}   /* dark maroon; --ct is the same colour lifted for small text on a dark screen */
+  [data-theme=light]{--c:#7a1a2c;--ct:#7a1a2c}
+  .kind{color:var(--ct)}
+  .glyph{-webkit-text-stroke-color:color-mix(in srgb,var(--ct) 45%,transparent)}
+  [hidden]{display:none!important}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{touch-action:manipulation}
+  .gs{display:none;position:fixed;inset:0;flex-direction:column;
+      padding:calc(10px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
+  .gs.on{display:flex;animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  .wrap{flex:1;min-height:0;display:flex;flex-direction:column;max-width:460px;width:100%;margin:0 auto}
+  .go{background:var(--c);color:#fff;box-shadow:0 10px 26px color-mix(in srgb,var(--c) 35%,transparent)}
+  .aka{font-family:var(--display);font-size:clamp(20px,3.4dvh,26px);letter-spacing:3px;color:var(--ct);line-height:1;margin:2px 0 10px;position:relative}
+
+  /* playing: the credits block of a film poster, quiet and tight */
+  #s-play{background:radial-gradient(70% 45% at 20% 10%,color-mix(in srgb,var(--c) 16%,transparent),transparent 70%),var(--bg)}
+  .top{display:flex;justify-content:space-between;align-items:center;min-height:42px}
+  .top small{font-size:11px;letter-spacing:2px;color:var(--muted)}
+  .stage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(14px,3dvh,28px);max-width:760px;width:100%;margin:0 auto;padding-bottom:8px}
+  .lbl{font-size:11px;letter-spacing:4px;color:var(--muted)}
+  .lbl i{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--ct);margin-right:10px;vertical-align:1px}
+  .bill{display:flex;flex-direction:column;align-items:center;width:100%}
+  .bill b{display:block;font-family:var(--display);font-weight:400;letter-spacing:1.5px;line-height:.95;color:var(--text);text-wrap:balance;overflow-wrap:normal;word-break:normal;max-width:100%}
+  .bill .amp{font-family:var(--mono);font-size:12px;letter-spacing:3px;color:var(--muted);margin:clamp(6px,1.4dvh,12px) 0}
+  .bill .rule{width:36px;height:1px;background:var(--border);margin:clamp(14px,3dvh,26px) 0 clamp(10px,2dvh,16px)}
+  .bill .mu small{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:3px;color:var(--muted);margin-bottom:6px}
+  .bill .mu b{color:color-mix(in srgb,var(--text) 62%,var(--bg))}
+  .bill.in > *{animation:crIn .5s cubic-bezier(.2,.7,.2,1) both}
+  .bill.in > :nth-child(2){animation-delay:.08s} .bill.in > :nth-child(3){animation-delay:.14s} .bill.in > :nth-child(n+4){animation-delay:.22s}
+  @keyframes crIn{from{opacity:0;transform:translateY(10px)}}
+  /* the answer slot: SHOW ANSWER turns into the answer, softly */
+  .slot{display:grid;place-items:center;width:100%;min-height:clamp(64px,12dvh,100px)}
+  .slot > *{grid-area:1/1;transition:opacity .55s ease,transform .55s cubic-bezier(.2,.8,.2,1),filter .55s ease}
+  .show{border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--mono);font-size:12px;letter-spacing:3px;padding:12px 24px;border-radius:999px;cursor:pointer;box-shadow:var(--lift)}
+  .show:active{transform:scale(.96)}
+  .ans{font-family:var(--display);font-weight:400;font-size:clamp(30px,min(9vw,8dvh),60px);letter-spacing:2px;line-height:1;color:var(--text);
+       background:color-mix(in srgb,var(--c) 14%,var(--surface));border:1.5px solid var(--ct);border-radius:18px;padding:10px 26px 8px;max-width:100%;
+       box-shadow:0 10px 30px color-mix(in srgb,var(--c) 22%,transparent);opacity:0;transform:translateY(14px) scale(.94);filter:blur(8px);pointer-events:none;text-wrap:balance}
+  .slot.open .show{opacity:0;transform:translateY(-10px) scale(.96);pointer-events:none}
+  .slot.open .ans{opacity:1;transform:none;filter:none}
+  .next{width:min(320px,100%);margin:0 auto}
+  @media (orientation:landscape) and (max-height:500px){.stage{gap:8px}.next{width:min(260px,50%)}.cr{padding:4px 0}}
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- 1. ENTRY -->
+  <section class="gs on" id="s-home">
+    <div class="bar">
+      <button class="icon-btn" type="button" id="homeBtn" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="chipbtn" type="button" data-rules>How to play</button>
+    </div>
+    <div class="wrap">
+      <div class="hero">
+        <div class="glyph" aria-hidden="true">S</div>
+        <div class="kind"><i></i>Pass one phone</div>
+        <h1>STARRING</h1>
+        <div class="aka">GUESS BY CAST</div>
+        <p>The hero, the heroine and the music director. Read them out and let everyone shout the movie.</p>
+        <div class="facts"><span class="fact">1 phone</span><span class="fact">Any number</span><span class="fact">No timer</span></div>
+      </div>
+      <button class="btn go" type="button" id="startBtn">START</button>
+    </div>
+  </section>
+
+  <!-- 2. THE CAST -->
+  <section class="gs" id="s-play">
+    <div class="top">
+      <small id="count"></small>
+      <button class="icon-btn" type="button" id="stopBtn" aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="stage">
+      <div class="lbl"><i></i>STARRING</div>
+      <div class="bill" id="bill">
+        <b id="h"></b>
+        <span class="amp">AND</span>
+        <b id="w"></b>
+        <span class="rule"></span>
+        <div class="mu"><small>MUSIC BY</small><b id="m"></b></div>
+      </div>
+      <div class="slot" id="slot">
+        <button class="show" type="button" id="showBtn">SHOW ANSWER</button>
+        <div class="ans" id="ans"></div>
+      </div>
+    </div>
+    <button class="btn go next" type="button" id="nextBtn">NEXT</button>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet ht-sheet" id="rulesSheet" aria-label="How to play"><div class="grab"></div><div id="howto"></div></section>
+
+<script src="core/howto.js?v=0.2.0"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  // ═════════════ MOVIES (edit here: n = movie, h = hero(es), w = heroine, m = music director) ═════════════
+  // No two movies may have the same three names, or there would be two right answers.
+  const MOVIES = [
+    { n: "RRR", h: "Jr NTR, Ram Charan", w: "Alia Bhatt", m: "M. M. Keeravani" },
+    { n: "Magadheera", h: "Ram Charan", w: "Kajal Aggarwal", m: "M. M. Keeravani" },
+    { n: "Baahubali: The Beginning", h: "Prabhas", w: "Tamannaah", m: "M. M. Keeravani" },
+    { n: "Baahubali 2: The Conclusion", h: "Prabhas", w: "Anushka Shetty", m: "M. M. Keeravani" },
+    { n: "Pushpa: The Rise", h: "Allu Arjun", w: "Rashmika Mandanna", m: "Devi Sri Prasad" },
+    { n: "Arjun Reddy", h: "Vijay Deverakonda", w: "Shalini Pandey", m: "Radhan" },
+    { n: "Geetha Govindam", h: "Vijay Deverakonda", w: "Rashmika Mandanna", m: "Gopi Sundar" },
+    { n: "Dear Comrade", h: "Vijay Deverakonda", w: "Rashmika Mandanna", m: "Justin Prabhakaran" },
+    { n: "Pelli Choopulu", h: "Vijay Deverakonda", w: "Ritu Varma", m: "Vivek Sagar" },
+    { n: "Taxiwaala", h: "Vijay Deverakonda", w: "Priyanka Jawalkar", m: "Jakes Bejoy" },
+    { n: "Kushi (2023)", h: "Vijay Deverakonda", w: "Samantha", m: "Hesham Abdul Wahab" },
+    { n: "Ala Vaikunthapurramuloo", h: "Allu Arjun", w: "Pooja Hegde", m: "S. Thaman" },
+    { n: "Rangasthalam", h: "Ram Charan", w: "Samantha", m: "Devi Sri Prasad" },
+    { n: "Eega", h: "Nani", w: "Samantha", m: "M. M. Keeravani" },
+    { n: "Pokiri", h: "Mahesh Babu", w: "Ileana D'Cruz", m: "Mani Sharma" },
+    { n: "Athadu", h: "Mahesh Babu", w: "Trisha", m: "Mani Sharma" },
+    { n: "Okkadu", h: "Mahesh Babu", w: "Bhumika Chawla", m: "Mani Sharma" },
+    { n: "Murari", h: "Mahesh Babu", w: "Sonali Bendre", m: "Mani Sharma" },
+    { n: "Arjun", h: "Mahesh Babu", w: "Shriya Saran", m: "Mani Sharma" },
+    { n: "Khaleja", h: "Mahesh Babu", w: "Anushka Shetty", m: "Mani Sharma" },
+    { n: "Srimanthudu", h: "Mahesh Babu", w: "Shruti Haasan", m: "Devi Sri Prasad" },
+    { n: "Bharat Ane Nenu", h: "Mahesh Babu", w: "Kiara Advani", m: "Devi Sri Prasad" },
+    { n: "Maharshi", h: "Mahesh Babu", w: "Pooja Hegde", m: "Devi Sri Prasad" },
+    { n: "Sarileru Neekevvaru", h: "Mahesh Babu", w: "Rashmika Mandanna", m: "Devi Sri Prasad" },
+    { n: "Nenokkadine", h: "Mahesh Babu", w: "Kriti Sanon", m: "Devi Sri Prasad" },
+    { n: "Dookudu", h: "Mahesh Babu", w: "Samantha", m: "S. Thaman" },
+    { n: "Businessman", h: "Mahesh Babu", w: "Kajal Aggarwal", m: "S. Thaman" },
+    { n: "Guntur Kaaram", h: "Mahesh Babu", w: "Sreeleela", m: "S. Thaman" },
+    { n: "Spyder", h: "Mahesh Babu", w: "Rakul Preet Singh", m: "Harris Jayaraj" },
+    { n: "Seethamma Vakitlo Sirimalle Chettu", h: "Venkatesh, Mahesh Babu", w: "Samantha", m: "Mickey J. Meyer" },
+    { n: "Tholi Prema", h: "Pawan Kalyan", w: "Keerthi Reddy", m: "Deva" },
+    { n: "Thammudu", h: "Pawan Kalyan", w: "Preeti Jhangiani", m: "Ramana Gogula" },
+    { n: "Badri", h: "Pawan Kalyan", w: "Amisha Patel", m: "Ramana Gogula" },
+    { n: "Kushi", h: "Pawan Kalyan", w: "Bhumika Chawla", m: "Mani Sharma" },
+    { n: "Gudumba Shankar", h: "Pawan Kalyan", w: "Meera Jasmine", m: "Mani Sharma" },
+    { n: "Jalsa", h: "Pawan Kalyan", w: "Ileana D'Cruz", m: "Devi Sri Prasad" },
+    { n: "Gabbar Singh", h: "Pawan Kalyan", w: "Shruti Haasan", m: "Devi Sri Prasad" },
+    { n: "Attarintiki Daredi", h: "Pawan Kalyan", w: "Samantha", m: "Devi Sri Prasad" },
+    { n: "Bheemla Nayak", h: "Pawan Kalyan, Rana Daggubati", w: "Nithya Menen", m: "S. Thaman" },
+    { n: "Simhadri", h: "Jr NTR", w: "Bhumika Chawla", m: "M. M. Keeravani" },
+    { n: "Yamadonga", h: "Jr NTR", w: "Priyamani", m: "M. M. Keeravani" },
+    { n: "Temper", h: "Jr NTR", w: "Kajal Aggarwal", m: "Anup Rubens" },
+    { n: "Nannaku Prematho", h: "Jr NTR", w: "Rakul Preet Singh", m: "Devi Sri Prasad" },
+    { n: "Janatha Garage", h: "Jr NTR", w: "Samantha", m: "Devi Sri Prasad" },
+    { n: "Jai Lava Kusa", h: "Jr NTR", w: "Raashii Khanna", m: "Devi Sri Prasad" },
+    { n: "Aravinda Sametha Veera Raghava", h: "Jr NTR", w: "Pooja Hegde", m: "S. Thaman" },
+    { n: "Devara: Part 1", h: "Jr NTR", w: "Janhvi Kapoor", m: "Anirudh Ravichander" },
+    { n: "Arya", h: "Allu Arjun", w: "Anuradha Mehta", m: "Devi Sri Prasad" },
+    { n: "Bunny", h: "Allu Arjun", w: "Gowri Munjal", m: "Devi Sri Prasad" },
+    { n: "Desamuduru", h: "Allu Arjun", w: "Hansika Motwani", m: "Chakri" },
+    { n: "Parugu", h: "Allu Arjun", w: "Sheela", m: "Mani Sharma" },
+    { n: "Arya 2", h: "Allu Arjun", w: "Kajal Aggarwal", m: "Devi Sri Prasad" },
+    { n: "Julayi", h: "Allu Arjun", w: "Ileana D'Cruz", m: "Devi Sri Prasad" },
+    { n: "Race Gurram", h: "Allu Arjun", w: "Shruti Haasan", m: "S. Thaman" },
+    { n: "S/O Satyamurthy", h: "Allu Arjun", w: "Samantha", m: "Devi Sri Prasad" },
+    { n: "Sarrainodu", h: "Allu Arjun", w: "Rakul Preet Singh", m: "S. Thaman" },
+    { n: "Chirutha", h: "Ram Charan", w: "Neha Sharma", m: "Mani Sharma" },
+    { n: "Orange", h: "Ram Charan", w: "Genelia D'Souza", m: "Harris Jayaraj" },
+    { n: "Racha", h: "Ram Charan", w: "Tamannaah", m: "Mani Sharma" },
+    { n: "Naayak", h: "Ram Charan", w: "Kajal Aggarwal", m: "S. Thaman" },
+    { n: "Yevadu", h: "Ram Charan", w: "Shruti Haasan", m: "Devi Sri Prasad" },
+    { n: "Dhruva", h: "Ram Charan", w: "Rakul Preet Singh", m: "Hiphop Tamizha" },
+    { n: "Varsham", h: "Prabhas", w: "Trisha", m: "Devi Sri Prasad" },
+    { n: "Chatrapathi", h: "Prabhas", w: "Shriya Saran", m: "M. M. Keeravani" },
+    { n: "Yogi", h: "Prabhas", w: "Nayanthara", m: "Ramana Gogula" },
+    { n: "Billa", h: "Prabhas", w: "Anushka Shetty", m: "Mani Sharma" },
+    { n: "Darling", h: "Prabhas", w: "Kajal Aggarwal", m: "G. V. Prakash Kumar" },
+    { n: "Mr. Perfect", h: "Prabhas", w: "Kajal Aggarwal", m: "Devi Sri Prasad" },
+    { n: "Mirchi", h: "Prabhas", w: "Anushka Shetty", m: "Devi Sri Prasad" },
+    { n: "Radhe Shyam", h: "Prabhas", w: "Pooja Hegde", m: "Justin Prabhakaran" },
+    { n: "Salaar: Part 1 – Ceasefire", h: "Prabhas", w: "Shruti Haasan", m: "Ravi Basrur" },
+    { n: "Kalki 2898 AD", h: "Prabhas", w: "Deepika Padukone", m: "Santhosh Narayanan" },
+    { n: "Indra", h: "Chiranjeevi", w: "Sonali Bendre", m: "Mani Sharma" },
+    { n: "Tagore", h: "Chiranjeevi", w: "Shriya Saran", m: "Mani Sharma" },
+    { n: "Stalin", h: "Chiranjeevi", w: "Trisha", m: "Mani Sharma" },
+    { n: "Shankar Dada M.B.B.S.", h: "Chiranjeevi", w: "Sonali Bendre", m: "Devi Sri Prasad" },
+    { n: "Khaidi No. 150", h: "Chiranjeevi", w: "Kajal Aggarwal", m: "Devi Sri Prasad" },
+    { n: "Waltair Veerayya", h: "Chiranjeevi", w: "Shruti Haasan", m: "Devi Sri Prasad" },
+    { n: "Sye Raa Narasimha Reddy", h: "Chiranjeevi", w: "Nayanthara", m: "Amit Trivedi" },
+    { n: "Narasimha Naidu", h: "Balakrishna", w: "Simran", m: "Mani Sharma" },
+    { n: "Simha", h: "Balakrishna", w: "Nayanthara", m: "Chakri" },
+    { n: "Legend", h: "Balakrishna", w: "Sonal Chauhan", m: "Devi Sri Prasad" },
+    { n: "Akhanda", h: "Balakrishna", w: "Pragya Jaiswal", m: "S. Thaman" },
+    { n: "Veera Simha Reddy", h: "Balakrishna", w: "Shruti Haasan", m: "S. Thaman" },
+    { n: "Bhagavanth Kesari", h: "Balakrishna", w: "Kajal Aggarwal", m: "S. Thaman" },
+    { n: "Nuvvu Naaku Nachav", h: "Venkatesh", w: "Aarthi Agarwal", m: "Koti" },
+    { n: "Malliswari", h: "Venkatesh", w: "Katrina Kaif", m: "Koti" },
+    { n: "F2: Fun and Frustration", h: "Venkatesh, Varun Tej", w: "Tamannaah", m: "Devi Sri Prasad" },
+    { n: "Shiva", h: "Nagarjuna", w: "Amala", m: "Ilaiyaraaja" },
+    { n: "Ninne Pelladata", h: "Nagarjuna", w: "Tabu", m: "Sandeep Chowta" },
+    { n: "Annamayya", h: "Nagarjuna", w: "Ramya Krishnan", m: "M. M. Keeravani" },
+    { n: "Manmadhudu", h: "Nagarjuna", w: "Sonali Bendre", m: "Devi Sri Prasad" },
+    { n: "Soggade Chinni Nayana", h: "Nagarjuna", w: "Ramya Krishnan", m: "Anup Rubens" },
+    { n: "Manam", h: "Nagarjuna, Naga Chaitanya", w: "Samantha", m: "Anup Rubens" },
+    { n: "Oopiri", h: "Nagarjuna, Karthi", w: "Tamannaah", m: "Gopi Sundar" },
+    { n: "Ye Maaya Chesave", h: "Naga Chaitanya", w: "Samantha", m: "A. R. Rahman" },
+    { n: "100% Love", h: "Naga Chaitanya", w: "Tamannaah", m: "Devi Sri Prasad" },
+    { n: "Majili", h: "Naga Chaitanya", w: "Samantha", m: "Gopi Sundar" },
+    { n: "Rarandoi Veduka Chudham", h: "Naga Chaitanya", w: "Rakul Preet Singh", m: "Devi Sri Prasad" },
+    { n: "Love Story", h: "Naga Chaitanya", w: "Sai Pallavi", m: "Pawan Ch" },
+    { n: "Fidaa", h: "Varun Tej", w: "Sai Pallavi", m: "Shakthikanth Karthick" },
+    { n: "Kanche", h: "Varun Tej", w: "Pragya Jaiswal", m: "Chirantan Bhatt" },
+    { n: "Tholi Prema (2018)", h: "Varun Tej", w: "Raashii Khanna", m: "S. Thaman" },
+    { n: "Ala Modalaindi", h: "Nani", w: "Nithya Menen", m: "Kalyani Malik" },
+    { n: "Bhale Bhale Magadivoy", h: "Nani", w: "Lavanya Tripathi", m: "Gopi Sundar" },
+    { n: "Nenu Local", h: "Nani", w: "Keerthy Suresh", m: "Devi Sri Prasad" },
+    { n: "Ninnu Kori", h: "Nani", w: "Nivetha Thomas", m: "Gopi Sundar" },
+    { n: "Jersey", h: "Nani", w: "Shraddha Srinath", m: "Anirudh Ravichander" },
+    { n: "Shyam Singha Roy", h: "Nani", w: "Sai Pallavi", m: "Mickey J. Meyer" },
+    { n: "Dasara", h: "Nani", w: "Keerthy Suresh", m: "Santhosh Narayanan" },
+    { n: "Hi Nanna", h: "Nani", w: "Mrunal Thakur", m: "Hesham Abdul Wahab" },
+    { n: "Sita Ramam", h: "Dulquer Salmaan", w: "Mrunal Thakur", m: "Vishal Chandrashekhar" },
+    { n: "Bommarillu", h: "Siddharth", w: "Genelia D'Souza", m: "Devi Sri Prasad" },
+    { n: "Nuvvostanante Nenoddantana", h: "Siddharth", w: "Trisha", m: "Devi Sri Prasad" },
+    { n: "Happy Days", h: "Varun Sandesh", w: "Tamannaah", m: "Mickey J. Meyer" },
+    { n: "Kotha Bangaru Lokam", h: "Varun Sandesh", w: "Swetha Basu Prasad", m: "Mickey J. Meyer" },
+    { n: "Leader", h: "Rana Daggubati", w: "Richa Gangopadhyay", m: "Mickey J. Meyer" },
+    { n: "Ready", h: "Ram Pothineni", w: "Genelia D'Souza", m: "Devi Sri Prasad" },
+    { n: "Kandireega", h: "Ram Pothineni", w: "Hansika Motwani", m: "S. Thaman" },
+    { n: "Nenu Sailaja", h: "Ram Pothineni", w: "Keerthy Suresh", m: "Devi Sri Prasad" },
+    { n: "iSmart Shankar", h: "Ram Pothineni", w: "Nidhhi Agerwal", m: "Mani Sharma" },
+    { n: "Idiot", h: "Ravi Teja", w: "Rakshita", m: "Chakri" },
+    { n: "Bhadra", h: "Ravi Teja", w: "Meera Jasmine", m: "Devi Sri Prasad" },
+    { n: "Vikramarkudu", h: "Ravi Teja", w: "Anushka Shetty", m: "M. M. Keeravani" },
+    { n: "Kick", h: "Ravi Teja", w: "Ileana D'Cruz", m: "S. Thaman" },
+    { n: "Mirapakay", h: "Ravi Teja", w: "Richa Gangopadhyay", m: "S. Thaman" },
+    { n: "Krack", h: "Ravi Teja", w: "Shruti Haasan", m: "S. Thaman" },
+    { n: "Dhamaka", h: "Ravi Teja", w: "Sreeleela", m: "Bheems Ceciroleo" },
+    { n: "Jayam", h: "Nithiin", w: "Sadha", m: "R. P. Patnaik" },
+    { n: "Dil", h: "Nithiin", w: "Neha Bamb", m: "R. P. Patnaik" },
+    { n: "Sye", h: "Nithiin", w: "Genelia D'Souza", m: "M. M. Keeravani" },
+    { n: "Gunde Jaari Gallanthayyinde", h: "Nithiin", w: "Nithya Menen", m: "Anup Rubens" },
+    { n: "Bheeshma", h: "Nithiin", w: "Rashmika Mandanna", m: "Mahati Swara Sagar" },
+    { n: "Run Raja Run", h: "Sharwanand", w: "Seerat Kapoor", m: "Ghibran" },
+    { n: "Mahanubhavudu", h: "Sharwanand", w: "Mehreen Pirzada", m: "S. Thaman" },
+    { n: "Kshanam", h: "Adivi Sesh", w: "Adah Sharma", m: "Sricharan Pakala" },
+    { n: "Goodachari", h: "Adivi Sesh", w: "Sobhita Dhulipala", m: "Sricharan Pakala" },
+    { n: "Major", h: "Adivi Sesh", w: "Saiee Manjrekar", m: "Sricharan Pakala" },
+    { n: "Karthikeya 2", h: "Nikhil Siddhartha", w: "Anupama Parameswaran", m: "Kaala Bhairava" },
+    { n: "Uppena", h: "Panja Vaisshnav Tej", w: "Krithi Shetty", m: "Devi Sri Prasad" },
+    { n: "Jathi Ratnalu", h: "Naveen Polishetty", w: "Faria Abdullah", m: "Radhan" },
+    { n: "Agent Sai Srinivasa Athreya", h: "Naveen Polishetty", w: "Shruti Sharma", m: "Mark K. Robin" },
+    { n: "Baby", h: "Anand Deverakonda", w: "Vaishnavi Chaitanya", m: "Vijai Bulganin" }
+  ];
+
+  // ── theme: follows the phone unless the player chose one in Profile ──
+  const sysDark = matchMedia('(prefers-color-scheme: dark)');
+  function theme() {
+    let pref = 'system'; try { pref = localStorage.getItem('cf_theme') || 'system'; } catch (e) {}
+    const t = pref === 'system' ? (sysDark.matches ? 'dark' : 'light') : pref;
+    document.documentElement.dataset.theme = t;
+    document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#f4f4f8' : '#0a0a0f';
+  }
+  theme(); sysDark.addEventListener('change', theme);
+
+  // ── no repeats until every movie has come up (remembered on this phone) ──
+  let used = []; try { used = JSON.parse(localStorage.getItem('cf_cast_used') || '[]'); } catch (e) {}
+  let cur = null, played = 0, busy = false;
+  function nextMovie() {
+    if (used.length >= MOVIES.length) used = [];
+    const left = MOVIES.map((_, i) => i).filter(i => !used.includes(i));
+    const i = left[Math.floor(Math.random() * left.length)];
+    used.push(i); try { localStorage.setItem('cf_cast_used', JSON.stringify(used)); } catch (e) {}
+    cur = MOVIES[i]; played++;
+    $('h').textContent = cur.h.replace(', ', ' & '); $('w').textContent = cur.w; $('m').textContent = cur.m;
+    const b = $('bill'); b.classList.remove('in'); void b.offsetWidth; b.classList.add('in');
+    $('slot').classList.remove('open'); $('ans').textContent = '';
+    $('count').textContent = 'MOVIE ' + played;
+    fit();
+  }
+  function showAns() { $('ans').textContent = cur.n; $('slot').classList.add('open'); }
+  function onNext() {
+    if (busy) return;
+    if (cur && !$('slot').classList.contains('open')) { busy = true; showAns(); setTimeout(() => { busy = false; nextMovie(); }, 1500); }
+    else nextMovie();
+  }
+  // the names as big as fit: no word broken, nothing scrolls
+  function fit() {
+    const names = ['h', 'w', 'm'].map($), stage = $('bill').parentElement;
+    let fs = Math.min(innerWidth * .15, innerHeight * .09, 84);
+    const set = () => names.forEach((n, k) => { n.style.fontSize = (k === 2 ? fs * .55 : fs) + 'px'; });
+    set();
+    while ((stage.scrollHeight > stage.clientHeight + 1 || names.some(n => n.scrollWidth > n.clientWidth + 1)) && fs > 18) { fs -= 2; set(); }
+  }
+  addEventListener('resize', () => { if ($('s-play').classList.contains('on')) fit(); });
+
+  function show(id) { document.querySelectorAll('#game .gs').forEach(s => s.classList.toggle('on', s.id === id)); }
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = CinefiedHowTo.templates.readGuess({
+    c: '#8e1f33', t1: 'Press START. The hero, the heroine and the music director of a Telugu movie appear.', t2: 'Read them out loud. Everyone shouts the movie they think it is.',
+    head: 'GUESS THE MOVIE', gap: 8.6, shift: -2,
+    lines: [['HERO', 'm', 4.6, '#9a9ab8'], ['MAHESH BABU', 'd', 11, '#fff'], ['HEROINE', 'm', 4.6, '#9a9ab8'], ['ILEANA', 'd', 11, '#fff'], ['MUSIC', 'm', 4.6, '#9a9ab8'], ['MANI SHARMA', 'd', 11, '#fff']],
+    lines2: [['HERO', 'm', 4.6, '#9a9ab8'], ['NANI', 'd', 11, '#fff'], ['HEROINE', 'm', 4.6, '#9a9ab8'], ['SAMANTHA', 'd', 11, '#fff'], ['MUSIC', 'm', 4.6, '#9a9ab8'], ['M. M. KEERAVANI', 'd', 11, '#fff']],
+    guesses: ['Athadu?', 'Pokiri!', 'Okkadu?'], mine: 'Businessman?', right: 1, answer: 'POKIRI'
+  });
+
+  const HT = CinefiedHowTo.create($('howto'), HOWTO);
+  const openSheet = () => { $('rulesSheet').classList.add('open'); $('scrim').classList.add('open'); HT.play(); };
+  const closeSheet = () => { HT.stop(); $('rulesSheet').classList.remove('open'); $('scrim').classList.remove('open'); };
+  // every time the game is opened, the how-to-play plays first
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => { if ($('s-home').classList.contains('on')) openSheet(); }, 450));
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#startBtn')) { played = 0; show('s-play'); return nextMovie(); }
+    if (t.closest('#showBtn')) return showAns();
+    if (t.closest('#nextBtn')) return onNext();
+    if (t.closest('#stopBtn')) return show('s-home');
+    if (t.closest('#homeBtn')) return void history.back();
+    if (t.closest('[data-rules]')) return openSheet();
+    if (t.closest('#scrim') || t.closest('[data-close]')) return closeSheet();
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Heads Up! · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  /* Heads Up! — one phone, on your forehead. No room, no database. */
+  :root{--c:var(--accent2)}
+  [hidden]{display:none!important}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{user-select:none;-webkit-user-select:none;touch-action:manipulation}
+  .gs{display:none;position:fixed;inset:0;flex-direction:column;
+      padding:calc(8px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
+  .gs.on{display:flex;animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  .lbl{font-size:10.5px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+
+  /* ── 1. setup: swipe through category posters ── */
+  #s-setup{--k:var(--accent)}
+  #s-setup .wrap{flex:1;min-height:0;display:flex;flex-direction:column;max-width:460px;width:100%;margin:0 auto}
+  .ctop{text-align:center}
+  .ctop h1{font-family:var(--display);font-weight:400;font-size:clamp(40px,6.4dvh,52px);letter-spacing:3px;line-height:1}
+  .ctop h1 b{font-weight:400;color:var(--accent2)}
+  .ctop p{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .rail{flex:1;min-height:0;display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;margin:clamp(10px,2dvh,18px) -16px 12px;padding:6px 13%;scrollbar-width:none;overscroll-behavior-x:contain}
+  .rail::-webkit-scrollbar{display:none}
+  .poster{flex:0 0 100%;scroll-snap-align:center;border-radius:24px;display:flex;flex-direction:column;justify-content:flex-end;padding:22px;position:relative;overflow:hidden;cursor:pointer;
+          background:var(--surface);border:1.5px solid color-mix(in srgb,var(--k) 55%,var(--border));box-shadow:var(--lift);
+          transition:transform .35s cubic-bezier(.2,.7,.2,1),opacity .35s;transform:scale(.9);opacity:.55}
+  .poster.on{transform:none;opacity:1}
+  .poster::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 70% at 80% 0%,color-mix(in srgb,var(--k) 22%,transparent),transparent 70%)}
+  .poster .big{position:absolute;top:-4%;right:-6%;font-family:var(--display);font-size:clamp(200px,44dvh,360px);line-height:.85;color:transparent;
+               -webkit-text-stroke:2px color-mix(in srgb,var(--k) 70%,transparent);pointer-events:none}
+  .poster .line{width:34px;height:4px;border-radius:2px;background:var(--k);margin-bottom:12px;position:relative}
+  .poster .nm{font-family:var(--display);font-weight:400;font-size:clamp(36px,7dvh,54px);letter-spacing:2px;line-height:.9;position:relative;white-space:nowrap;color:var(--text)}
+  .poster small{font-size:11.5px;margin-top:6px;position:relative;letter-spacing:1px;color:var(--k)}
+  .dots{display:flex;gap:6px;justify-content:center;margin-bottom:clamp(10px,1.8dvh,16px)}
+  .dots i{width:6px;height:6px;border-radius:3px;background:var(--border);transition:width .25s,background .25s}
+  .dots i.on{width:18px;background:var(--k)}
+  .seg{display:flex;gap:6px;background:var(--surface2);border-radius:14px;padding:4px;margin-bottom:12px}
+  .seg button{flex:1;white-space:nowrap;border:0;background:none;color:var(--muted);font-family:var(--display);font-size:20px;letter-spacing:1.5px;padding:8px 0;border-radius:10px;cursor:pointer}
+  .seg button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 6px rgba(0,0,0,.18)}
+  #startBtn{background:var(--k);color:var(--kt,#fff);box-shadow:0 10px 26px color-mix(in srgb,var(--k) 35%,transparent);transition:background .3s,transform .15s}
+  @media (orientation:landscape) and (max-height:540px){
+    #s-setup .wrap{max-width:860px;display:grid;grid-template-columns:1.25fr 1fr;grid-template-rows:auto 1fr auto auto;column-gap:22px}
+    .rail{grid-column:1;grid-row:1/5;margin:0 0 0 -16px;padding:4px 14% 4px;mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+    .poster{padding:16px}
+    .poster .big{font-size:clamp(160px,58dvh,300px)}
+    .ctop{grid-column:2;grid-row:1;align-self:end}
+    .dots{grid-column:2;grid-row:2;align-self:center;margin:0}
+    .seg{grid-column:2;grid-row:3}
+    #startBtn{grid-column:2;grid-row:4}
+  }
+
+  /* ── 2. get ready ── */
+  #s-ready{align-items:center;justify-content:center;text-align:center;gap:10px;background:var(--bg)}
+  #s-ready h2{font-family:var(--display);font-weight:400;font-size:clamp(34px,8vmin,64px);letter-spacing:2.5px;line-height:1}
+  #readyBody{display:flex;flex-direction:column;align-items:center}
+  #s-ready p{font-size:12px;color:var(--muted);line-height:1.5;max-width:340px}
+  .phone{width:56px;height:96px;border:3px solid var(--text);border-radius:12px;position:relative;margin-bottom:10px}
+  .phone::after{content:"";position:absolute;bottom:6px;left:50%;width:14px;height:3px;border-radius:2px;background:var(--text);transform:translateX(-50%)}
+  .phone.turn{animation:turn 1.8s cubic-bezier(.6,0,.3,1) infinite}
+  @keyframes turn{0%,20%{transform:rotate(0)}55%,100%{transform:rotate(-90deg)}}
+  .phone.head{transform:rotate(-90deg);animation:nod 2.2s ease-in-out infinite}
+  @keyframes nod{0%,100%{transform:rotate(-90deg) translateX(0)}50%{transform:rotate(-90deg) translateX(-8px)}}
+  .link{background:none;border:0;color:var(--muted);font-family:var(--mono);font-size:11.5px;text-decoration:underline;cursor:pointer;margin-top:6px;padding:8px}
+  .count3{font-family:var(--display);font-size:clamp(120px,40vmin,220px);line-height:1;color:var(--c);animation:pop .9s ease-out both}
+  @keyframes pop{from{transform:scale(1.6);opacity:0}30%{opacity:1}to{transform:scale(.9);opacity:.85}}
+  .quit{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:calc(12px + env(safe-area-inset-left,0px));z-index:5}
+
+  /* ── 3. playing ── */
+  #s-play{padding:0;background:var(--bg)}
+  #s-play .zone{position:absolute;left:0;right:0;height:50%;cursor:pointer}
+  #zTop{top:0} #zBot{bottom:0}
+  #s-play .hint{position:absolute;left:0;right:0;text-align:center;font-family:var(--display);font-size:clamp(13px,3.4vmin,18px);letter-spacing:3px;opacity:.55;pointer-events:none}
+  #s-play .hint.t{top:calc(10px + env(safe-area-inset-top,0px));color:var(--accent2)}
+  #s-play .hint.b{bottom:calc(10px + env(safe-area-inset-bottom,0px));color:var(--green)}
+  .hud{position:absolute;top:calc(8px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));display:flex;gap:6px;pointer-events:none;z-index:2}
+  .hud span{font-size:12px;padding:4px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border)}
+  .hud .g{color:var(--green)} .hud .p{color:var(--accent2)}
+  .word{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;padding:0 5vw;text-align:center}
+  #word{font-family:var(--display);font-weight:400;letter-spacing:2px;line-height:.95;max-width:90vw;overflow-wrap:break-word;text-wrap:balance}
+  #wordSub{font-size:clamp(12px,3.6vmin,20px);color:var(--muted);margin-top:8px;min-height:1em}
+  #timer{font-family:var(--display);font-size:clamp(30px,10vmin,52px);letter-spacing:3px;margin-top:clamp(4px,2vmin,14px);font-variant-numeric:tabular-nums}
+  #timer.low{color:var(--accent);animation:pulse .5s ease-in-out infinite alternate}
+  @keyframes pulse{to{transform:scale(1.12)}}
+  .flash{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;z-index:4;pointer-events:none}
+  .flash.on{display:flex;animation:fl .55s ease-out both}
+  @keyframes fl{from{opacity:0;transform:scale(1.06)}25%{opacity:1;transform:none}}
+  .flash b{font-family:var(--display);font-weight:400;font-size:clamp(64px,24vmin,150px);letter-spacing:4px;color:#fff;line-height:1}
+  .flash small{color:rgba(255,255,255,.85);font-size:clamp(12px,3.4vmin,18px);margin-top:6px}
+  #fGot{background:#12b86d} #fPass{background:#f07a26} #fEnd{background:#e52b2b}
+
+  /* ── 4. results ── */
+  #s-res .wrap{flex:1;min-height:0;display:flex;flex-direction:column;max-width:460px;width:100%;margin:0 auto}
+  .score{text-align:center;margin:clamp(2px,1.4dvh,14px) 0 clamp(10px,2dvh,18px)}
+  .score small{font-family:var(--display);font-size:20px;letter-spacing:3px;color:var(--muted)}
+  .score b{display:block;font-family:var(--display);font-weight:400;font-size:clamp(84px,17dvh,130px);line-height:.9;color:var(--green)}
+  .score p{font-size:11.5px;color:var(--muted);margin-top:4px}
+  .list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;padding:2px;
+        mask-image:linear-gradient(#000 calc(100% - 18px),transparent)}
+  .list span{font-size:12px;padding:6px 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface);display:inline-flex;gap:6px;align-items:center;max-width:100%}
+  .list span.g{border-color:color-mix(in srgb,var(--green) 45%,var(--border));color:var(--text)}
+  .list span.g::before{content:"✓";color:var(--green)}
+  .list span.p{color:var(--muted)} .list span.p::before{content:"✗";color:var(--accent2)}
+  .list span.t{color:var(--muted);border-style:dashed} .list span.t::before{content:"⏱"}
+  .acts{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  #againBtn{background:var(--c);box-shadow:0 10px 26px color-mix(in srgb,var(--c) 35%,transparent)}
+  @media (orientation:landscape) and (max-height:540px){
+    #s-res .wrap{max-width:820px;display:grid;grid-template-columns:.8fr 1.2fr;grid-template-rows:1fr auto;column-gap:22px}
+    .score{grid-column:1;grid-row:1;align-self:center}
+    .list{grid-column:2;grid-row:1/3;margin-top:6px}
+    .acts{grid-column:1;grid-row:2}
+    .acts .btn{font-size:19px;padding:12px}
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- 1. SETUP -->
+  <section class="gs on" id="s-setup">
+    <div class="bar">
+      <button class="icon-btn" type="button" id="homeBtn" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="chipbtn" type="button" data-rules>How to play</button>
+    </div>
+    <div class="wrap">
+      <div class="ctop"><h1>HEADS <b>UP!</b></h1><p>Swipe to pick a category</p></div>
+      <div class="rail" id="rail"></div>
+      <div class="dots" id="dots"></div>
+      <div class="seg" id="times"></div>
+      <button class="btn" type="button" id="startBtn">START</button>
+    </div>
+  </section>
+
+  <!-- 2. GET READY -->
+  <section class="gs" id="s-ready">
+    <button class="icon-btn quit" type="button" data-quit aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div id="readyBody"></div>
+  </section>
+
+  <!-- 3. PLAYING -->
+  <section class="gs" id="s-play">
+    <div class="zone" id="zTop"></div><div class="zone" id="zBot"></div>
+    <p class="hint t" id="hintT">TILT UP · PASS</p><p class="hint b" id="hintB">TILT DOWN · GOT IT</p>
+    <button class="icon-btn quit" type="button" data-quit aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="hud"><span class="g">✓ <b id="nGot">0</b></span><span class="p">✗ <b id="nPass">0</b></span></div>
+    <div class="word"><div id="word"></div><div id="wordSub"></div><div id="timer"></div></div>
+    <div class="flash" id="fGot"><b>GOT IT!</b></div>
+    <div class="flash" id="fPass"><b>PASS</b></div>
+    <div class="flash" id="fEnd"><b>TIME'S UP!</b><small>Take the phone down</small></div>
+  </section>
+
+  <!-- 4. RESULTS -->
+  <section class="gs" id="s-res">
+    <div class="bar"><button class="icon-btn" type="button" data-quit aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button><span></span></div>
+    <div class="wrap">
+      <div class="score"><small>YOU GOT</small><b id="rScore">0</b><p id="rSub"></p></div>
+      <div class="list" id="rList"></div>
+      <div class="acts"><button class="btn" type="button" id="againBtn">PLAY AGAIN</button><button class="btn outline" type="button" data-quit>CHANGE CATEGORY</button></div>
+    </div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet ht-sheet" id="rulesSheet" aria-label="How to play"><div class="grab"></div><div id="howto"></div></section>
+
+<script src="data/words.js"></script>
+<script src="core/howto.js?v=0.1.0"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const W = window.ImposterWords;
+
+  // ── theme: follows the phone unless the player chose one in Profile ──
+  const sysDark = matchMedia('(prefers-color-scheme: dark)');
+  function theme() {
+    let pref = 'system'; try { pref = localStorage.getItem('cf_theme') || 'system'; } catch (e) {}
+    const t = pref === 'system' ? (sysDark.matches ? 'dark' : 'light') : pref;
+    document.documentElement.dataset.theme = t;
+    document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#f4f4f8' : '#0a0a0f';
+  }
+  theme(); sysDark.addEventListener('change', theme);
+
+  // ── settings ──
+  const CATS = [
+    { k: 'movies', n: 'Movies', col: 'var(--accent)' }, { k: 'actors', n: 'Actors', col: 'var(--blue)' }, { k: 'actresses', n: 'Actresses', col: 'var(--purple)' },
+    { k: 'directors', n: 'Directors', col: 'var(--green)' }, { k: 'characters', n: 'Characters', col: 'var(--yellow)', dark: true }, { k: 'mixed', n: 'Mixed', col: 'var(--accent2)' },
+  ];
+  const TIMES = [60, 90, 120];
+  const load = (k, d) => { try { return localStorage.getItem(k) || d; } catch (e) { return d; } };
+  const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+  let cat = load('cf_hu_cat', 'movies'), secs = +load('cf_hu_time', '60');
+  if (!CATS.some(c => c.k === cat)) cat = 'movies';
+  if (!TIMES.includes(secs)) secs = 60;
+  const pool = k => (k === 'mixed' ? ['movies', 'actors', 'actresses', 'directors', 'characters'].flatMap(c => W[c]) : W[k]);
+
+  const rail = $('rail');
+  $('rail').innerHTML = CATS.map(c => `<div class="poster" style="--k:${c.col}" data-cat="${c.k}"><span class="big">${c.n[0]}</span><div class="line"></div><span class="nm">${c.n.toUpperCase()}</span></div>`).join('');
+  $('dots').innerHTML = CATS.map(() => '<i></i>').join('');
+  const posterAt = () => Math.max(0, Math.min(CATS.length - 1, Math.round(rail.scrollLeft / (rail.firstElementChild.offsetWidth + 14))));
+  function setCat(i) {
+    const c = CATS[i]; cat = c.k; save('cf_hu_cat', cat);
+    rail.querySelectorAll('.poster').forEach((p, j) => p.classList.toggle('on', i === j));
+    $('dots').querySelectorAll('i').forEach((d, j) => d.classList.toggle('on', i === j));
+    $('s-setup').style.setProperty('--k', c.col); $('s-setup').style.setProperty('--kt', c.dark ? '#16161f' : '#fff');
+  }
+  function toCat(behavior) {
+    const i = CATS.findIndex(c => c.k === cat), p = rail.children[i];
+    rail.scrollTo({ left: p.offsetLeft - (rail.clientWidth - p.offsetWidth) / 2, behavior: behavior || 'auto' });
+    setCat(i);
+  }
+  let scrollT = null;
+  rail.addEventListener('scroll', () => { const i = posterAt(); if (CATS[i].k !== cat) setCat(i); });
+  function fitNames() {
+    rail.querySelectorAll('.nm').forEach(n => { n.style.fontSize = ''; let f = parseFloat(getComputedStyle(n).fontSize); while (f > 22 && n.scrollWidth > n.parentElement.clientWidth - 40) { f -= 2; n.style.fontSize = f + 'px'; } });
+  }
+  function drawSetup() {
+    $('times').innerHTML = TIMES.map(t => `<button type="button" class="${t === secs ? 'on' : ''}" data-time="${t}">${t}s</button>`).join('');
+  }
+  drawSetup(); requestAnimationFrame(() => { fitNames(); toCat(); });
+  document.fonts && document.fonts.ready.then(() => { fitNames(); toCat(); });
+
+  // ── no repeats until the list runs out (remembered on this phone) ──
+  function deck() {
+    const all = pool(cat), key = 'cf_hu_used_' + cat;
+    let used = {}; try { used = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) {}
+    let left = all.filter(w => !used[w]);
+    if (left.length < 25) { used = {}; left = all.slice(); }
+    for (let i = left.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [left[i], left[j]] = [left[j], left[i]]; }
+    return { list: left, mark: w => { used[w] = 1; try { localStorage.setItem(key, JSON.stringify(used)); } catch (e) {} } };
+  }
+
+  // ── sound + buzz ──
+  let ac = null;
+  function beep(f, d, type = 'sine', vol = .18, when = 0) {
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.setValueAtTime(f, t);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d);
+    } catch (e) {}
+  }
+  const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+  const SND = {
+    got: () => { beep(660, .12, 'triangle'); beep(990, .22, 'triangle', .18, .1); buzz(60); },
+    pass: () => { beep(300, .25, 'sawtooth', .1); buzz([40, 50, 40]); },
+    tick: () => beep(1200, .05, 'square', .06),
+    go: () => beep(880, .3, 'triangle'),
+    count: () => beep(520, .12, 'triangle'),
+    end: () => { beep(200, .7, 'sawtooth', .16); beep(150, .7, 'sawtooth', .12, .05); buzz(500); },
+  };
+
+  // ── tilt: how much the screen faces the floor (-1) or the ceiling (+1) ──
+  let tilt = { ok: false, seen: false, z: 0, armed: false };
+  function onTilt(e) {
+    if (e.beta == null || e.gamma == null) return;
+    const first = !tilt.seen; tilt.seen = true;
+    const r = Math.PI / 180;
+    tilt.z = Math.cos(e.beta * r) * Math.cos(e.gamma * r);
+    if (first && state === 'ready' && !$('readyBody').querySelector('.count3')) drawReady();
+    if (state === 'ready' && readyWait) readyWait();
+    if (state !== 'play' || !tilt.ok || upright) return;
+    if (Math.abs(tilt.z) < .35) tilt.armed = true;            // back to upright: ready for the next one
+    else if (tilt.armed && tilt.z < -.62) mark(true);         // nod down: got it
+    else if (tilt.armed && tilt.z > .62) mark(false);         // head back: pass
+  }
+  async function askTilt() {
+    // iPhone asks "Allow motion?" once; elsewhere this does nothing. Tilt counts as working once the phone reports a reading.
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') await DeviceOrientationEvent.requestPermission();
+    } catch (e) {}
+    tilt.ok = true;
+    addEventListener('deviceorientation', onTilt);
+  }
+
+  // ── keep the screen awake and sideways while playing (where the phone allows) ──
+  let lock = null;
+  async function grab() {
+    try { if (navigator.wakeLock) lock = await navigator.wakeLock.request('screen'); } catch (e) {}
+    try {
+      if (matchMedia('(pointer:coarse)').matches && document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+        await screen.orientation.lock('landscape');
+      }
+    } catch (e) {}
+  }
+  function release() {
+    try { lock && lock.release(); } catch (e) {} lock = null;
+    try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch (e) {}
+    try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {}
+  }
+
+  // ── flow ──
+  let state = 'setup', D = null, cur = null, got = [], log = [], endAt = 0, tickT = null, busy = false, readyWait = null, upright = false, countT = null;
+  function show(id) { document.querySelectorAll('#game .gs').forEach(s => s.classList.toggle('on', s.id === id)); }
+  const landscape = () => innerWidth > innerHeight;
+
+  async function start() {
+    SND.count();                       // unlocks sound on iPhone (needs a tap)
+    if (!tilt.seen && !tilt.asked) { tilt.asked = true; await askTilt(); }
+    grab();
+    D = deck(); got = []; log = []; upright = false;
+    state = 'ready'; show('s-ready'); drawReady();
+  }
+  function drawReady() {
+    clearTimeout(countT); readyWait = null;
+    const body = $('readyBody');
+    if (!landscape() && !upright) {
+      body.innerHTML = `<div class="phone turn" style="margin:0 auto 18px"></div><h2>TURN YOUR PHONE SIDEWAYS</h2><p>Then hold it on your forehead, screen facing your friends.</p><button class="link" type="button" id="uprightBtn">Play upright instead</button>`;
+      return;
+    }
+    if (tilt.ok && tilt.seen && !upright) {
+      body.innerHTML = `<div class="phone head" style="margin:0 auto 22px"></div><h2>PUT IT ON YOUR FOREHEAD</h2><p>Screen facing your friends. It starts when you hold it straight.</p><button class="link" type="button" id="goNow">Start now</button>`;
+      let since = 0;
+      readyWait = () => {
+        if (Math.abs(tilt.z) < .4) { since = since || Date.now(); if (Date.now() - since > 700) countdown(); }
+        else since = 0;
+      };
+    } else {
+      body.innerHTML = `<div class="phone head" style="margin:0 auto 22px"></div><h2>PUT IT ON YOUR FOREHEAD</h2><p>${upright ? 'Tap' : "Tilt isn't working on this phone, so tap"} instead: top half = pass, bottom half = got it.</p><button class="btn" type="button" id="goNow" style="width:auto;padding:12px 28px;margin-top:8px">TAP TO START</button>`;
+    }
+  }
+  function countdown() {
+    readyWait = null;
+    let n = 3;
+    const step = () => {
+      if (state !== 'ready') return;
+      if (n === 0) return play();
+      $('readyBody').innerHTML = `<div class="count3">${n}</div>`; SND.count(); n--;
+      countT = setTimeout(step, 900);
+    };
+    step();
+  }
+  function play() {
+    state = 'play'; show('s-play'); SND.go();
+    tilt.armed = false;
+    const tilting = tilt.ok && tilt.seen && !upright;
+    $('hintT').textContent = tilting ? 'TILT UP · PASS' : 'TAP HERE · PASS';
+    $('hintB').textContent = tilting ? 'TILT DOWN · GOT IT' : 'TAP HERE · GOT IT';
+    $('nGot').textContent = '0'; $('nPass').textContent = '0';
+    endAt = Date.now() + secs * 1000; next(); clock();
+  }
+  function next() {
+    if (!D.list.length) { D = deck(); }
+    cur = D.list.shift();
+    const m = /^(.*)\s\(([^)]+)\)$/.exec(cur);           // "Bhallaladeva (Baahubali)": movie under the name
+    $('word').textContent = m ? m[1] : cur;
+    $('wordSub').textContent = m ? m[2] : '';
+    fit();
+  }
+  function fit() {
+    const el = $('word'), maxH = innerHeight * .5;
+    let s = Math.min(innerWidth * .16, innerHeight * .3, 190);
+    el.style.fontSize = s + 'px';
+    while (s > 28 && (el.scrollHeight > maxH || el.scrollWidth > el.clientWidth + 1)) { s -= 4; el.style.fontSize = s + 'px'; }
+  }
+  function clock() {
+    clearTimeout(tickT);
+    if (state !== 'play') return;
+    const left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+    const t = $('timer');
+    t.textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+    t.classList.toggle('low', left <= 10);
+    if (left <= 10 && left > 0 && !busy) SND.tick();
+    if (left <= 0) return finish();
+    tickT = setTimeout(clock, 1000 - ((endAt - Date.now()) % 1000 + 1000) % 1000 + 5);
+  }
+  function mark(ok) {
+    if (state !== 'play' || busy) return;
+    busy = true; tilt.armed = false;
+    log.push({ w: cur, ok }); D.mark(cur); if (ok) got.push(cur);
+    $('nGot').textContent = got.length; $('nPass').textContent = log.length - got.length;
+    (ok ? SND.got : SND.pass)();
+    const f = $(ok ? 'fGot' : 'fPass'); f.querySelector('b').textContent = ok ? 'GOT IT!' : 'PASS';
+    f.classList.add('on');
+    setTimeout(() => { f.classList.remove('on'); busy = false; if (state === 'play') next(); }, 650);
+  }
+  function finish() {
+    state = 'end'; clearTimeout(tickT);
+    if (cur && !log.some(l => l.w === cur)) log.push({ w: cur, ok: null });
+    $('fGot').classList.remove('on'); $('fPass').classList.remove('on');
+    $('fEnd').classList.add('on'); SND.end();
+    setTimeout(() => { $('fEnd').classList.remove('on'); results(); }, 1800);
+  }
+  function results() {
+    state = 'res'; release(); show('s-res');
+    const passed = log.filter(l => l.ok === false).length;
+    $('rScore').textContent = got.length;
+    $('rSub').textContent = `${got.length} got · ${passed} passed · ${CATS.find(c => c.k === cat).n} · ${secs}s`;
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    $('rList').innerHTML = log.length ? log.map(l => `<span class="${l.ok ? 'g' : l.ok === false ? 'p' : 't'}">${esc(l.w)}</span>`).join('') : '<p style="color:var(--muted);font-size:12px">Nothing this time.</p>';
+  }
+  function quit() {
+    state = 'setup'; clearTimeout(tickT); clearTimeout(countT); readyWait = null; busy = false;
+    document.querySelectorAll('.flash').forEach(f => f.classList.remove('on'));
+    release(); drawSetup(); show('s-setup'); requestAnimationFrame(() => { fitNames(); toCat(); });
+  }
+
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = {
+    steps: [
+      { d: 3400, t: 'Pick a category and a time, then press START.' },
+      { d: 3000, t: 'Turn the phone sideways and hold it on your forehead, screen facing your friends.' },
+      { d: 3400, t: 'Your friends shout clues without saying the name.' },
+      { d: 5000, t: 'Got it? Tilt the phone down. Stuck? Tilt it up to pass.' },
+      { d: 3800, t: "When time's up, see how many you got." }
+    ],
+    build(svg, K) {
+      const { el, op, cl, pr, ease, back, lerp, wrap, fitLines, pass, Phone, Player, Chip, Label, Pill, Ripple, COLORS } = K;
+      const H = [160, 196], F = [[46, 70], [274, 70], [46, 206]], FC = [[46, 36], [274, 36], [46, 238]];
+      const pl = el('g', {}, svg);
+      const holder = Player(pl, H[0], H[1], 'R', COLORS[0]), friends = F.map((p, i) => Player(pl, p[0], p[1], 'SBA'[i], COLORS[i + 1]));
+      const defs = el('defs', {}, svg), mk = el('marker', { id: 'ar2', viewBox: '0 0 10 10', refX: 6, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' }, defs);
+      el('path', { d: 'M1 1L8 5L1 9', fill: 'none', stroke: 'var(--accent2)', 'stroke-width': 2.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, mk);
+      const down = el('path', { d: 'M226 118Q240 140 226 162', fill: 'none', stroke: 'var(--green)', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'marker-end': 'url(#ar2)', opacity: 0 }, svg);
+      const up = el('path', { d: 'M226 162Q240 140 226 118', fill: 'none', stroke: 'var(--accent2)', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'marker-end': 'url(#ar2)', opacity: 0 }, svg);
+      const ph = Phone(svg);
+      const letter = Label(svg), cat = Label(svg, 'm'), word = Label(svg), timer = Label(svg, 'm'), flash = Label(svg), small = Label(svg, 'm'), big = Label(svg), sub = Label(svg, 'm');
+       letter.t.setAttribute('stroke-width', 1.4);
+      const start = Pill(svg, 'START', 'var(--accent2)'), tap = Ripple(svg), tilt = Chip(svg), clues = F.map(() => Chip(svg));
+      const swipe = el('circle', { r: 6, fill: 'var(--text)', opacity: 0 }, svg);
+      const pop = (u, a) => back(pr(u, a, 260));
+      const P0 = [160, 112, 2.5], P1 = [160, 146, 1.8];
+      const clock = sec => '0:' + String(Math.max(0, sec)).padStart(2, '0');
+      return (s, u) => {
+        [letter, cat, word, timer, flash, small, big, sub].forEach(l => l.hide()); start.hide(); tap.set(0, 0, 0); tilt.hide(); clues.forEach(c => c.hide());
+        op(down, 0); op(up, 0); op(swipe, 0); ph.screen('#13131a'); holder.set({ x: H[0], y: H[1], s: 2 }); friends.forEach(f => f.set());
+        if (s === 0) {
+          holder.set({ x: H[0], y: H[1], s: 2, o: .15 }); friends.forEach(f => f.set({ o: .15 }));
+          const [x, y, sc] = P0; ph.at(x, y, sc);
+          const out = pr(u, 900, 220), inn = pr(u, 1120, 260), second = u >= 1120;
+          const dx = second ? 14 * (1 - ease(inn)) : -14 * ease(out), o = second ? inn : 1 - out;
+          letter.t.setAttribute('stroke', second ? 'var(--accent)' : 'var(--blue)'); letter.set(second ? 'M' : 'A', x + dx, y - 18, 60, 'none', { o });
+          cat.set(second ? 'MOVIES' : 'ACTORS', x + dx, y + 13, 10, '#e8e8f0', { o });
+          if (u > 500 && u < 1150) { op(swipe, .5 * (1 - pr(u, 950, 200))); swipe.setAttribute('cx', (x + 26 - 52 * ease(pr(u, 550, 500))).toFixed(1)); swipe.setAttribute('cy', y + 4); }
+          start.set(x, y + 40, sc * .75, pr(u, 1500, 250), pr(u, 2350, 120) - pr(u, 2470, 120));
+          tap.set(x, y + 40, pr(u, 2400, 600), 30);
+        } else if (s === 1) {
+          const k = ease(pr(u, 200, 900)), fo = 1 - pr(u, 0, 250);
+          const x = lerp(P0[0], P1[0], k), y = lerp(P0[1], P1[1], k), sc = lerp(P0[2], P1[2], k);
+          ph.at(x, y, sc, 90 * k);
+          letter.t.setAttribute('stroke', 'var(--accent)'); letter.set('M', x, y - 18, 60, 'none', { o: fo }); cat.set('MOVIES', x, y + 13, 10, '#e8e8f0', { o: fo });
+          holder.set({ x: H[0], y: H[1], s: 2, o: lerp(.15, 1, k) }); friends.forEach((f, i) => f.set({ o: lerp(.15, 1, pr(u, 700 + i * 120, 400)) }));
+          if (u > 1300) { word.set('PRABHAS', x, y - 3, 22, '#fff', { s: pop(u, 1300), maxW: 76 }); timer.set('1:00', x, y + 15, 7, '#9a9ab8', { o: pr(u, 1400, 300) }); }
+        } else if (s === 2) {
+          ph.at(...P1.slice(0, 2), P1[2], 90);
+          word.set('PRABHAS', P1[0], P1[1] - 3, 22, '#fff', { maxW: 76 }); timer.set(clock(58 - Math.floor(u / 1000)), P1[0], P1[1] + 15, 7, '#9a9ab8');
+          ['Baahubali!', 'Darling!', 'Rebel star!'].forEach((c, i) => {
+            if (u < 250 + i * 850) return;
+            clues[i].set(c, FC[i][0], FC[i][1], pop(u, 250 + i * 850));
+            friends[i].set({ ring: u < 250 + (i + 1) * 850 ? 1 : 0 });
+          });
+        } else if (s === 3) {
+          const td = pr(u, 300, 600), tu = pr(u, 2800, 600), b = Math.sin(Math.PI * td), c = Math.sin(Math.PI * tu);
+          const sx = 1 - .45 * (b + c), y = P1[1] + 9 * b - 9 * c;
+          ph.at(P1[0], y, P1[2], 90, sx);
+          const t = clock(54 - Math.floor(u / 1000));
+          if (u < 1500 && u >= 750) { ph.screen('#12b86d'); flash.set('GOT IT!', P1[0], y, 20, '#fff', { s: pop(u, 750), sy: sx, maxW: 76 }); }
+          else if (u >= 3250 && u < 4000) { ph.screen('#f07a26'); flash.set('PASS', P1[0], y, 22, '#fff', { s: pop(u, 3250), sy: sx }); }
+          else {
+            const w = u < 750 ? 'PRABHAS' : u < 3250 ? 'SAMANTHA' : 'NANI', a = u < 750 ? -1e4 : u < 3250 ? 1500 : 4000;
+            word.set(w, P1[0], y - 3, 22, '#fff', { s: pop(u, a), sy: sx, maxW: 76 }); timer.set(t, P1[0], y + 15, 7, '#9a9ab8', { sy: sx });
+          }
+          if (u < 1700) { op(down, pr(u, 0, 250)); tilt.set('TILT DOWN · GOT IT', 250, 234, pop(u, 50)); }
+          else if (u >= 2300 && u < 4300) { op(up, pr(u, 2300, 250)); tilt.set('TILT UP · PASS', 250, 234, pop(u, 2350)); }
+        } else {
+          const k = ease(pr(u, 1300, 800)), x = lerp(P1[0], P0[0], k), y = lerp(P1[1], P0[1], k), sc = lerp(P1[2], P0[2], k);
+          ph.at(x, y, sc, 90 * (1 - k));
+          if (u < 1300) { ph.screen('#e52b2b'); flash.set("TIME'S UP!", x, y, 20, '#fff', { s: pop(u, 0), maxW: 78 }); }
+          holder.set({ x: H[0], y: H[1], s: 2, o: 1 - .8 * k }); friends.forEach(f => f.set({ o: 1 - .8 * k }));
+          if (u > 2000) {
+            small.set('YOU GOT', x, y - 28, 8, '#9a9ab8', { o: pr(u, 2000, 250) });
+            big.set('7', x, y - 2, 58, 'var(--green)', { s: pop(u, 2150) });
+            sub.set('7 got · 3 passed', x, y + 28, 6.5, '#9a9ab8', { o: pr(u, 2400, 300) });
+          }
+        }
+      };
+    }
+  };
+
+  const HT = CinefiedHowTo.create($('howto'), HOWTO);
+  const openRules = () => { $('rulesSheet').classList.add('open'); $('scrim').classList.add('open'); HT.play(); };
+  const closeRules = () => { HT.stop(); $('rulesSheet').classList.remove('open'); $('scrim').classList.remove('open'); };
+  // every time the game is opened, the how-to-play plays first
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => { if (state === 'setup') openRules(); }, 450));
+
+  // ── touches + keys ──
+  document.addEventListener('click', e => {
+    const t = e.target;
+    const c = t.closest('.poster'); if (c) { if (c.dataset.cat === cat) return void start(); cat = c.dataset.cat; return toCat('smooth'); }
+    if (t.closest('[data-rules]')) return openRules();
+    if (t.closest('#scrim') || t.closest('[data-close]')) return closeRules();
+    const tm = t.closest('[data-time]'); if (tm) { secs = +tm.dataset.time; save('cf_hu_time', String(secs)); return drawSetup(); }
+    if (t.closest('#startBtn') || t.closest('#againBtn')) return void start();
+    if (t.closest('#homeBtn')) return void history.back();
+    if (t.closest('[data-quit]')) return quit();
+    if (t.closest('#uprightBtn')) { upright = true; return drawReady(); }
+    if (t.closest('#goNow')) return countdown();
+  });
+  // taps on the playing screen act on touch-down for speed
+  $('zTop').addEventListener('pointerdown', e => { e.preventDefault(); mark(false); });
+  $('zBot').addEventListener('pointerdown', e => { e.preventDefault(); mark(true); });
+  addEventListener('keydown', e => {
+    if (state === 'play' && (e.key === 'ArrowDown' || e.key === ' ')) mark(true);
+    if (state === 'play' && e.key === 'ArrowUp') mark(false);
+  });
+  addEventListener('resize', () => { if (state === 'setup') { fitNames(); toCat(); } if (state === 'ready' && !$('readyBody').querySelector('.count3')) drawReady(); if (state === 'play') fit(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && state === 'play' && navigator.wakeLock) grab(); });
+})();
+</script>
+</body>
+</html>

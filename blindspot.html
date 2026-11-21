@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Blindspot · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  :root{--c:var(--blue);--ct:#fff}
+  #game{display:none}
+  #game.on{display:block}
+  [hidden]{display:none!important}
+
+  /* the word: nothing but the name, as big as it fits */
+  #game .gs{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+      padding:calc(10px + env(safe-area-inset-top,0px)) calc(14px + env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px))}
+  #game .gs.on{display:flex}
+  #g-word{background:radial-gradient(70% 55% at 50% 50%,color-mix(in srgb,var(--c) 9%,transparent),transparent 75%),var(--bg);user-select:none;-webkit-user-select:none}
+  .top{z-index:4;position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:calc(14px + env(safe-area-inset-left,0px));right:calc(14px + env(safe-area-inset-right,0px));display:flex;justify-content:space-between;align-items:center}
+  .room{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:6px 12px 6px 6px;font-size:11px;color:var(--muted);cursor:pointer}
+  .room b{font-family:var(--display);font-weight:400;font-size:16px;letter-spacing:2.5px;color:var(--text)}
+  .room .who{display:flex}
+  .room .who .pfp{width:20px;height:20px;font-size:9px;margin-left:-6px;box-shadow:0 0 0 2px var(--surface)}
+  .room .who .pfp:first-child{margin-left:0}
+  #word{width:100%;text-align:center;font-family:var(--display);font-weight:400;letter-spacing:3px;line-height:.95;color:var(--text);overflow-wrap:normal;word-break:normal;text-wrap:balance;
+        text-shadow:0 0 40px color-mix(in srgb,var(--c) 30%,transparent)}
+  #word.pop{animation:pop .38s cubic-bezier(.2,.9,.3,1.25)}
+  @keyframes pop{from{opacity:0;transform:scale(.85)}}
+  #sub{font-size:clamp(12px,3.4vmin,18px);color:var(--muted);margin-top:10px;min-height:1em;text-align:center}
+  .next{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);border:0;border-radius:999px;padding:13px 34px;
+        background:var(--c);color:var(--ct);font-family:var(--display);font-size:22px;letter-spacing:3px;cursor:pointer;box-shadow:0 10px 26px color-mix(in srgb,var(--c) 30%,transparent)}
+  .next:active{transform:translateX(-50%) scale(.95)}
+  .hint{position:absolute;bottom:calc(76px + env(safe-area-inset-bottom,0px));left:0;right:0;text-align:center;font-size:10.5px;color:var(--muted);letter-spacing:1px}
+
+  /* screen 2: the first time, before the word shows */
+  #g-ready{text-align:center;gap:12px}
+  #g-ready h2{font-family:var(--display);font-weight:400;font-size:clamp(34px,8vmin,56px);letter-spacing:2.5px;line-height:1}
+  #g-ready p{font-size:12px;color:var(--muted);line-height:1.6;max-width:300px}
+  .phone{width:52px;height:90px;border:3px solid var(--c);border-radius:12px;position:relative;margin:0 auto 14px;animation:lift 2.2s ease-in-out infinite}
+  .phone::after{content:"";position:absolute;bottom:6px;left:50%;width:14px;height:3px;border-radius:2px;background:var(--c);transform:translateX(-50%)}
+  @keyframes lift{0%,100%{transform:translateY(8px)}50%{transform:translateY(-8px)}}
+  #g-ready .btn{width:auto;padding:14px 36px;background:var(--c);color:var(--ct);box-shadow:0 10px 26px color-mix(in srgb,var(--c) 30%,transparent)}
+  .cat{display:inline-flex;gap:8px;align-items:center;font-size:10.5px;letter-spacing:2px;color:var(--c);text-transform:uppercase}
+  .cat i{width:8px;height:8px;border-radius:2px;background:var(--c)}
+
+  /* the countdown: the name only appears once the phone is on your forehead */
+  .count{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--bg);z-index:3;text-align:center}
+  .count b{font-family:var(--display);font-weight:400;font-size:clamp(120px,36vmin,200px);line-height:1;color:var(--c);animation:cn .9s ease-out both}
+  @keyframes cn{from{transform:scale(1.5);opacity:0}30%{opacity:1}to{transform:scale(.92);opacity:.9}}
+  .count p{font-size:12px;color:var(--muted);letter-spacing:1px}
+  .count .phone{margin-bottom:4px}
+  #g-word.counting .next,#g-word.counting .hint,#g-word.counting #word,#g-word.counting #sub{visibility:hidden}
+  .sheet h3+p{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px}
+  .sheet .stack{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+  .sheet .stack .btn{margin-top:0}
+  .sheet .yel{background:var(--c);color:var(--ct);box-shadow:none}
+
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- 1. GET READY -->
+  <section class="gs" id="g-ready">
+    <div class="top"><span></span><button class="icon-btn" type="button" data-exit aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="cat"><i></i><span id="catName"></span></div>
+    <div class="phone"></div>
+    <h2>PUT IT ON YOUR FOREHEAD</h2>
+    <p>Press START, then put the phone on your forehead, screen facing out. Your name shows after a 3-second countdown.</p>
+    <button class="btn" type="button" id="startBtn">START</button>
+  </section>
+
+  <!-- 2. YOUR NAME -->
+  <section class="gs" id="g-word">
+    <div class="top">
+      <button class="room" type="button" id="roomChip"><span class="who" id="who"></span><b id="code"></b></button>
+      <button class="icon-btn" type="button" data-exit aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="count" id="count" hidden><div class="phone"></div><b id="countN">3</b><p>Put it on your forehead</p></div>
+    <div id="word"></div>
+    <div id="sub"></div>
+    <p class="hint">Got it right? Tap NEXT, then put it back on</p>
+    <button class="next" type="button" id="nextBtn">NEXT</button>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet" id="exitSheet" aria-label="Stop playing"><div class="grab"></div><h3>STOP PLAYING?</h3>
+  <p id="exitNote"></p>
+  <div class="stack">
+    <button class="btn yel" type="button" data-close>KEEP PLAYING</button>
+    <button class="btn outline" type="button" id="endBtn">END GAME FOR EVERYONE</button>
+    <button class="btn outline" type="button" id="leaveBtn">LEAVE THE ROOM</button>
+  </div>
+</section>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="data/words.js"></script>
+<script src="core/core.js?v=0.2.1"></script>
+<script src="core/howto.js?v=0.1.0"></script>
+<script src="core/core-ui.js?v=0.2.3"></script>
+<script>
+(() => {
+  'use strict';
+  const C = Cinefied, UI = CinefiedUI, esc = C.esc;
+  const $ = id => document.getElementById(id);
+  const game = $('game');
+  const W = window.ImposterWords;
+  const CATS = { actors: 'Actors', actresses: 'Actresses', movies: 'Movies', directors: 'Directors', mixed: 'Mixed' };
+  const COUNT_MS = 900;   // per number: 3, 2, 1
+
+  let V = null, code = null, phase = null, gameId = null, word = null, counting = false, busy = false, cd = null, wake = null;
+  const st = () => (V && V.room.state) || {};
+  // names for a category; each has a short key (its place in the list) used to claim it in the room
+  const poolOf = c => (c === 'mixed' ? ['actors', 'actresses', 'movies', 'directors'].flatMap(k => W[k]) : (W[c] || W.actors));
+
+  // ── remember my current name on this phone, so a refresh doesn't hand out a new one ──
+  const memKey = () => `cf_bs_${code}_${gameId}`;
+  const remember = w => { try { sessionStorage.setItem(memKey(), w); } catch (e) {} };
+  const recall = () => { try { return sessionStorage.getItem(memKey()); } catch (e) { return null; } };
+
+  // ── claim a name nobody in the room has had yet (a transaction, so two phones never get the same one) ──
+  async function claim() {
+    const db = firebase.database(), list = poolOf(st().cat);
+    for (let round = 0; round < 3; round++) {
+      const cyc = st().cycle || 0, used = ((st().used || {})['c' + cyc]) || {};
+      const free = list.map((_, i) => i).filter(i => !used['w' + i]);
+      for (let i = free.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [free[i], free[j]] = [free[j], free[i]]; }
+      for (const i of free.slice(0, 12)) {
+        try {
+          const r = await db.ref(`rooms/${code}/state/used/c${cyc}/w${i}`).transaction(cur => (cur ? undefined : true));
+          if (r && r.committed) return list[i];
+        } catch (e) { if (phase !== 'play') return null; }
+      }
+      if (free.length > 12) continue;                                    // the 12 tried were just taken: try others
+      // every name has been used: start the list again (the next cycle)
+      try { await db.ref(`rooms/${code}/state/cycle`).transaction(cur => (cur === cyc ? cyc + 1 : undefined)); } catch (e) {}
+      await new Promise(r => setTimeout(r, 120));
+    }
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  // ── the name, as big as it fits ──
+  function showWord(w) {
+    const m = /^(.*)\s\(([^)]+)\)$/.exec(w || '');
+    $('word').textContent = m ? m[1] : (w || ''); $('sub').textContent = m ? m[2] : '';
+    $('word').classList.remove('pop'); void $('word').offsetWidth; $('word').classList.add('pop'); fit();
+  }
+  function fit() {
+    const el = $('word'); if (!el.textContent) return;
+    const maxH = Math.min(innerHeight * .55, innerHeight - 200);   // leave room for NEXT (sideways phones too)
+    let fs = Math.min(innerWidth * .2, innerHeight * .34, 200); el.style.fontSize = fs + 'px';
+    while ((el.scrollWidth > el.clientWidth + 1 || el.offsetHeight > maxH) && fs > 20) { fs -= 3; el.style.fontSize = fs + 'px'; }
+  }
+  addEventListener('resize', fit);
+
+  // ── 3-2-1, then the name: after START and after every NEXT ──
+  function countdown(then) {
+    clearTimeout(cd); counting = true; $('g-word').classList.add('counting'); $('count').hidden = false;
+    let n = 3;
+    const step = () => {
+      if (!counting) return;
+      if (n === 0) { counting = false; $('count').hidden = true; $('g-word').classList.remove('counting'); return then(); }
+      const b = $('countN'); b.textContent = n; b.style.animation = 'none'; void b.offsetWidth; b.style.animation = '';
+      n--; cd = setTimeout(step, COUNT_MS);
+    };
+    step();
+  }
+  async function newName() {
+    if (busy) return;
+    busy = true;
+    showWord('');
+    const got = claim();                      // fetch while the countdown runs
+    countdown(async () => { const w = await got; busy = false; if (!w || phase !== 'play') return; word = w; remember(w); showWord(w); });
+  }
+
+  function show(id) { document.querySelectorAll('#game .gs').forEach(s => s.classList.toggle('on', s.id === id)); }
+  async function getWake() { try { if (navigator.wakeLock && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } } catch (e) {} }
+  function dropWake() { try { wake && wake.release(); } catch (e) {} wake = null; }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && phase === 'play') getWake(); });
+
+  function drawTop() {
+    $('code').textContent = code || '';
+    const ps = V.players.filter(p => p.online !== false);
+    $('who').innerHTML = ps.slice(0, 4).map(p => `<span class="pfp" style="--pc:${p.uid === V.me ? 'linear-gradient(135deg,var(--accent),var(--accent2))' : UI.avColor(p.uid)}">${UI.initial(p.name)}</span>`).join('');
+    $('catName').textContent = CATS[st().cat] || 'Actors';
+    $('endBtn').hidden = !V.isLeader;
+    const L = V.room.players[V.room.leader];
+    $('exitNote').textContent = V.isLeader ? 'END GAME takes everyone back to the waiting room to pick a new category.' : `Only ${L ? L.name : 'the leader'} can end the game for everyone. You can leave the room any time.`;
+  }
+  function render() {
+    if (!V || !V.room.state) return;
+    phase = V.room.phase;
+    drawTop();
+    const g = st().gid;
+    if (g !== gameId) {                       // a new game: back to "get ready", unless this phone already has a name for it
+      gameId = g; word = recall(); counting = false; busy = false; clearTimeout(cd);
+      $('count').hidden = true; $('g-word').classList.remove('counting');
+      if (word) { show('g-word'); showWord(word); } else show('g-ready');
+    }
+  }
+
+  // ══ touches ══════════════════════════════════════════════════
+  const closeSheet = () => { $('exitSheet').classList.remove('open'); $('scrim').classList.remove('open'); };
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#scrim') || t.closest('[data-close]')) return closeSheet();
+    if (t.closest('#leaveBtn')) { closeSheet(); return void UI.leaveGame(); }
+    if (t.closest('#endBtn') && V && V.isLeader) {
+      closeSheet();
+      return void firebase.database().ref('rooms/' + code).update({ phase: 'waiting', open: false, state: null }).catch(err => UI.say(C.message(err)));
+    }
+    if (!t.closest('#game') || !V) return;
+    if (t.closest('[data-exit]')) { $('exitSheet').classList.add('open'); $('scrim').classList.add('open'); return; }
+    if (t.closest('#startBtn')) { show('g-word'); getWake(); return void newName(); }
+    if (t.closest('#nextBtn') && !counting) return void newName();
+    if (t.closest('#roomChip')) { try { navigator.clipboard.writeText(code); UI.say('Room code copied'); } catch (err) {} }
+  });
+
+  // ══ hand-off with the core ═══════════════════════════════════
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = {
+    steps: [
+      { d: 4400, t: 'Press START and put the phone on your forehead, screen facing out. Your name shows after a 3-second countdown.' },
+      { d: 3600, t: 'Everyone can see your name except you.' },
+      { d: 7600, t: 'Take turns going around the room. On your turn, ask one yes or no question about your own name.' },
+      { d: 4600, t: 'Got it? Tap NEXT and put the phone back on. A new name shows after the countdown.' }
+    ],
+    build(svg, K) {
+      const { el, op, cl, pr, ease, back, lerp, wrap, fitLines, pass, Phone, Player, Chip, Label, Pill, Ripple, COLORS } = K;
+      const X = [46, 122, 198, 274], AY = 160, ME = 1, PY = AY - 44;
+      const names = ['NANI', 'CHIRANJEEVI', 'SAMANTHA', 'PRABHAS'];
+      const sight = el('g', { opacity: 0 }, svg);
+      const sl = X.map((x, i) => i === ME ? null : el('path', { d: `M${x} ${AY - 18}L${X[ME] + (i < ME ? -12 : 12) * (i === 0 ? 1 : 1)} ${PY + 12}`, stroke: 'var(--muted)', 'stroke-width': 1.3, 'stroke-dasharray': '3 4', 'stroke-linecap': 'round', fill: 'none' }, sight));
+      const pl = el('g', {}, svg), players = X.map((x, i) => Player(pl, x, AY, 'RSBA'[i], COLORS[i]));
+      const you = el('text', { class: 'm', 'text-anchor': 'middle', 'font-size': 10, fill: 'var(--muted)', 'letter-spacing': 1.5, x: X[ME], y: AY + 31, opacity: 0 }, svg, 'YOU');
+      const phones = X.map(() => { const p = Phone(svg); p.screen('#13131a'); return p; });
+      const lbl = X.map(() => Label(svg)), cnt = Label(svg), next = Pill(svg, 'NEXT', 'var(--blue)'), start = Pill(svg, 'START', 'var(--blue)');
+      const q = Chip(svg), ans = X.map(() => Chip(svg)), tap = Ripple(svg);
+      const pop = (u, a) => back(pr(u, a, 260));
+      const count = (u, a, x, y, s) => { // 3 · 2 · 1 on the phone, from time a
+        const i = Math.floor((u - a) / 650); if (u < a || i > 2) return false;
+        cnt.set(String(3 - i), x, y, 26 * s / 1.75, 'var(--blue)', { s: .6 + .4 * pop(u, a + i * 650) }); return true;
+      };
+      return (s, u) => {
+        lbl.forEach(l => l.hide()); cnt.hide(); next.hide(); start.hide(); q.hide(); ans.forEach(c => c.hide()); tap.set(0, 0, 0); op(sight, 0); op(you, 0);
+        const me = phones[ME];
+        if (s === 0) {
+          players.forEach((p, i) => p.set({ o: i === ME ? 1 : 0 })); phones.forEach((p, i) => p.show(i === ME ? 1 : 0));
+          players[ME].set({ x: 160, y: 190, s: 2.1 });
+          const k = ease(pr(u, 1000, 800));
+          const x = 160, y = lerp(112, 140, k), sc = lerp(2.2, 1.75, k), rot = 90 * k;
+          me.at(x, y, sc, rot);
+          start.set(x, y + 13 * sc, sc * .9, 1 - pr(u, 800, 200), pr(u, 450, 150) - pr(u, 600, 150));
+          tap.set(x, y + 13 * sc, pr(u, 500, 600), 30);
+          if (!count(u, 1800, x, y, sc) && u >= 3750) lbl[ME].set(names[ME], x, y, 17, '#fff', { s: pop(u, 3750), maxW: 76 });
+        } else if (s === 1) {
+          const k = ease(pr(u, 0, 700));
+          players[ME].set({ x: lerp(160, X[ME], k), y: lerp(190, AY, k), s: lerp(2.1, 1, k), ring: k });
+          me.at(lerp(160, X[ME], k), lerp(140, PY, k), lerp(1.75, 1.15, k), 90);
+          lbl[ME].set(names[ME], lerp(160, X[ME], k), lerp(140, PY, k), lerp(17, 12, k), '#fff', { maxW: lerp(76, 46, k) });
+          X.forEach((x, i) => {
+            if (i === ME) return;
+            const o = pr(u, 350 + i * 120, 380), dy = 10 * (1 - ease(o));
+            players[i].set({ o }); phones[i].show(o); phones[i].at(x, PY + dy, 1.15, 90);
+            lbl[i].set(names[i], x, PY + dy, 12, '#fff', { o, maxW: 46 });
+          });
+          op(you, k); const sk = pr(u, 1300, 500); op(sight, sk);
+          sl.forEach(p => p && p.setAttribute('stroke-dashoffset', (-u / 40).toFixed(1)));
+          if (u > 1900) q.set('Who am I?', X[ME], AY + 46, pop(u, 1900));
+        } else if (s === 2) {
+          X.forEach((x, i) => { players[i].set(); phones[i].show(1); phones[i].at(x, PY, 1.15, 90); lbl[i].set(names[i], x, PY, 12, '#fff', { maxW: 46 }); });
+          op(you, 1);
+          const seq = [[0, 'Am I a hero?'], [2, 'Am I the Megastar?'], [3, 'Am I a heroine?'], [0, 'Am I a villain?'], [1, 'Am I Chiranjeevi?']];
+          const reply = ['Yes', 'Yes!', 'Yes', 'No', 'Yes!'];
+          const ask = [0, 1, 2, 3, 1];
+          const T = 1500, i = Math.min(4, Math.floor(u / T)), r = u - i * T, who = ask[i];
+          players[who].set({ ring: 1, ringC: i === 4 && r > 900 ? 'var(--green)' : 'var(--text)' });
+          if (r < 900) q.set(seq[i][1], X[who], AY + 46, pop(r, 0));
+          else X.forEach((x, j) => { if (j !== who) { ans[j].set(reply[i], x, AY + 46, pop(r, 900 + j * 70), i === 4 ? 'ok' : undefined); } });
+        } else {
+          const out = pr(u, 0, 600), back2 = pr(u, 2700, 500);
+          X.forEach((x, i) => {
+            if (i === ME) return;
+            const o = 1 - .75 * ease(out) + .75 * ease(back2);
+            players[i].set({ o }); phones[i].show(o); phones[i].at(x, PY, 1.15, 90); lbl[i].set(names[i], x, PY, 12, '#fff', { o, maxW: 46 });
+          });
+          op(you, 1); players[ME].set({ ring: 1 });
+          const kd = ease(pr(u, 0, 700)), ku = ease(pr(u, 1250, 850)), k = kd - ku;
+          const x = lerp(X[ME], 160, k), y = lerp(PY, 116, k), sc = lerp(1.15, 2.3, k), rot = 90 * (1 - k);
+          me.at(x, y, sc, rot);
+          if (u < 1150) {
+            lbl[ME].set(names[ME], x, y - 5 * sc, lerp(12, 16, kd), '#fff', { maxW: lerp(46, 44, kd) });
+            next.set(x, y + 12 * sc, sc * .85, pr(u, 450, 200), pr(u, 950, 120) - pr(u, 1070, 120));
+            tap.set(x, y + 12 * sc, pr(u, 1000, 600), 30);
+          }
+          if (!count(u, 1250, x, y, sc) && u >= 3200) lbl[ME].set('MAHESH BABU', x, y, 12, '#fff', { s: pop(u, 3200), maxW: 46 });
+        }
+      };
+    }
+  };
+
+  UI.mount({
+    game: {
+      howto: HOWTO,
+      id: 'blindspot', name: 'Blindspot', shelf: 'Play together', color: 'var(--blue)', glyph: 'B',
+      pitch: "A name on your forehead. Everyone can see it except you.",
+      facts: ['2 to 12 players', 'Each on own phone', 'No timer'],
+      rules: ['Each phone shows one name. Hold it on your forehead, screen facing out.',
+              'Everyone can see your name except you. Take turns going around the room: on your turn, ask one yes or no question about your own name.',
+              'Got it? Tap NEXT for a new name. It shows after a 3-second countdown, so put the phone back on first.',
+              'Nobody in the room gets the same name twice until the list runs out.'],
+      min: 2, max: 12,
+      settings: [{ key: 'cat', label: 'Category', options: Object.keys(CATS), default: 'actors', show: v => CATS[v], summary: v => CATS[v] || 'Actors' }],
+      startPhase: 'play',
+      startState: v => ({ cat: CATS[(v.room.settings || {}).cat] ? v.room.settings.cat : 'actors', gid: Date.now() + Math.random().toString(36).slice(2, 6), cycle: 0 }),
+    },
+    gameNames: { pictionary: 'Pictionary', imposter: 'Imposter', tictactoe: 'Tic Tac Toe', tierd: "Tier'd", likely: "Who's More Likely", wavelength: 'Wavelength', blindspot: 'Blindspot' },
+    onStart: v => {
+      V = v; code = v.code; gameId = null; game.classList.add('on'); render();
+      // friends can join while the game is going (the leader opens the room)
+      if (v.isLeader && v.room.open !== true) firebase.database().ref(`rooms/${code}/open`).set(true).catch(() => {});
+    },
+    onUpdate: v => { V = v; code = v.code; render(); if (v.isLeader && v.room.phase === 'play' && v.room.open !== true) firebase.database().ref(`rooms/${code}/open`).set(true).catch(() => {}); },
+    onLobby: () => { V = null; phase = null; gameId = null; counting = false; clearTimeout(cd); dropWake(); closeSheet(); game.classList.remove('on'); },
+  });
+})();
+</script>
+</body>
+</html>

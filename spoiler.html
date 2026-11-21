@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Spoiler · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  /* Spoiler (was Guess by Story): one phone. A plot line appears, everyone shouts the movie, then reveal the answer. */
+  :root{--c:var(--accent)}
+  [hidden]{display:none!important}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{touch-action:manipulation}
+  .gs{display:none;position:fixed;inset:0;flex-direction:column;
+      padding:calc(10px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
+  .gs.on{display:flex;animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  .wrap{flex:1;min-height:0;display:flex;flex-direction:column;max-width:460px;width:100%;margin:0 auto}
+  .go{background:var(--c);box-shadow:0 10px 26px color-mix(in srgb,var(--c) 35%,transparent)}
+
+  /* playing */
+  #s-play{background:radial-gradient(70% 45% at 20% 10%,color-mix(in srgb,var(--c) 10%,transparent),transparent 70%),radial-gradient(50% 45% at 85% 90%,color-mix(in srgb,var(--blue) 9%,transparent),transparent 70%),var(--bg)}
+  .top{display:flex;justify-content:space-between;align-items:center;min-height:42px}
+  .top small{font-size:11px;letter-spacing:2px;color:var(--muted)}
+  .stage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(14px,3dvh,26px);max-width:760px;width:100%;margin:0 auto;padding-bottom:8px}
+  .lbl{font-size:11px;letter-spacing:4px;color:var(--muted)}
+  .lbl i{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c);margin-right:10px;vertical-align:1px}
+  #story{font-family:var(--mono);font-weight:500;line-height:1.5;color:var(--text);max-width:34ch}
+  #story.in{animation:storyIn .45s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes storyIn{from{opacity:0;transform:translateY(10px)}}
+  /* the answer slot: SHOW ANSWER turns into the answer, softly */
+  .slot{display:grid;place-items:center;width:100%;min-height:clamp(64px,13dvh,100px)}
+  .slot > *{grid-area:1/1;transition:opacity .55s ease,transform .55s cubic-bezier(.2,.8,.2,1),filter .55s ease}
+  .show{border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--mono);font-size:12px;letter-spacing:3px;padding:12px 24px;border-radius:999px;cursor:pointer;box-shadow:var(--lift)}
+  .show:active{transform:scale(.96)}
+  .ans{font-family:var(--display);font-weight:400;font-size:clamp(34px,min(10vw,9dvh),64px);letter-spacing:2px;line-height:1;color:var(--text);
+       background:color-mix(in srgb,var(--c) 10%,var(--surface));border:1.5px solid var(--c);border-radius:18px;padding:10px 26px 8px;max-width:100%;
+       box-shadow:0 10px 30px color-mix(in srgb,var(--c) 22%,transparent);opacity:0;transform:translateY(14px) scale(.94);filter:blur(8px);pointer-events:none;text-wrap:balance}
+  .slot.open .show{opacity:0;transform:translateY(-10px) scale(.96);pointer-events:none}
+  .slot.open .ans{opacity:1;transform:none;filter:none}
+  .next{width:min(320px,100%);margin:0 auto}
+  /* what the game is, right under its name */
+  .aka{font-family:var(--display);font-size:clamp(20px,3.4dvh,26px);letter-spacing:3px;color:var(--c);line-height:1;margin:2px 0 10px;position:relative}
+  @media (orientation:landscape) and (max-height:500px){.stage{gap:10px}.next{width:min(260px,50%)}}
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- 1. ENTRY -->
+  <section class="gs on" id="s-home">
+    <div class="bar">
+      <button class="icon-btn" type="button" id="homeBtn" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="chipbtn" type="button" data-rules>How to play</button>
+    </div>
+    <div class="wrap">
+      <div class="hero">
+        <div class="glyph" aria-hidden="true">S</div>
+        <div class="kind"><i></i>Pass one phone</div>
+        <h1>SPOILER</h1>
+        <div class="aka">GUESS BY STORY</div>
+        <p>The whole plot, in one line. Read it out and let everyone shout the movie.</p>
+        <div class="facts"><span class="fact">1 phone</span><span class="fact">Any number</span><span class="fact">No timer</span></div>
+      </div>
+      <button class="btn go" type="button" id="startBtn">START</button>
+    </div>
+  </section>
+
+  <!-- 2. A STORY -->
+  <section class="gs" id="s-play">
+    <div class="top">
+      <small id="count"></small>
+      <button class="icon-btn" type="button" id="stopBtn" aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="stage">
+      <div class="lbl"><i></i>GUESS THE MOVIE</div>
+      <div id="story"></div>
+      <div class="slot" id="slot">
+        <button class="show" type="button" id="showBtn">SHOW ANSWER</button>
+        <div class="ans" id="ans"></div>
+      </div>
+    </div>
+    <button class="btn go next" type="button" id="nextBtn">NEXT</button>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet ht-sheet" id="rulesSheet" aria-label="How to play"><div class="grab"></div><div id="howto"></div></section>
+
+<script src="core/howto.js?v=0.2.0"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  // ═════════════ STORIES (edit here: n = movie, s = story line; do not put the title in the story) ═════════════
+  const STORIES = [
+    { n: "RRR", s: "Two revolutionaries in British India become the closest of friends without knowing that each has a secret mission that will put them on opposite sides." },
+    { n: "Baahubali: The Beginning", s: "A boy raised by villagers climbs a giant waterfall and falls for a rebel warrior woman. He then discovers he is the son of a king whose kingdom was taken through betrayal." },
+    { n: "Pushpa: The Rise", s: "A daily-wage labourer in the forests of Seshachalam rises through the red sandalwood smuggling trade on sheer nerve, chasing the respect his family name never had." },
+    { n: "Magadheera", s: "A young man and a woman feel a bond they cannot explain. Four hundred years earlier, a fearless warrior and a princess were kept apart by a jealous commander." },
+    { n: "Arjun Reddy", s: "A short-tempered, brilliant medical student falls for a junior at college. When they are forced apart, he spirals into alcohol and self-destruction." },
+    { n: "Ala Vaikunthapurramuloo", s: "A man raised by a strict, stingy father takes a job in a rich businessman's company, unaware that this is the family he was actually born into." },
+    { n: "Rangasthalam", s: "In a 1980s village, a hard-of-hearing young man who runs a water pump for farmers is caught between his elder brother and the tyrannical village president." },
+    { n: "Eega", s: "A young man murdered by a ruthless businessman is reborn as a housefly and sets out to take his revenge." },
+    { n: "Arundhati", s: "A woman who looks like her fearless ancestor is sent to a long-abandoned fort, where an evil sorcerer buried centuries ago is waiting to rise again." },
+    { n: "Pokiri", s: "A street thug who beats people up for a price turns out to be an undercover police officer hunting a powerful underworld don." },
+    { n: "Athadu", s: "A professional assassin on the run poses as a missing man to hide in a village, and slowly becomes part of the family he is pretending to belong to." },
+    { n: "Srimanthudu", s: "The son of a billionaire gives up his rich life to adopt a poor village, and fights a local politician who wants to keep it down." },
+    { n: "Gabbar Singh", s: "A fun-loving police officer who adores song contests is posted to a rural town and takes on a corrupt, dangerous local boss." },
+    { n: "Attarintiki Daredi", s: "A billionaire's grandson takes a job as a driver in his own aunt's house to bring his estranged family back together." },
+    { n: "Jersey", s: "A talented cricketer who quit the game after failure decides to return in his late thirties to give his young son the one thing he asked for." },
+    { n: "Salaar: Part 1 – Ceasefire", s: "Two childhood friends grow up apart. One of them becomes the most feared protector of a lawless fortress city when the other is in danger." },
+    { n: "Kalki 2898 AD", s: "In a distant future, the last living city is ruled by a tyrant, while a mysterious pregnant woman becomes the key to everyone's fate." },
+    { n: "Dasara", s: "In a coal-mining village, a man and his two best friends see their lives turn upside down because of love, betrayal and the local bar." },
+    { n: "Geetha Govindam", s: "A mild-mannered lecturer kisses a sleeping stranger on a bus ride. When they meet again, her family turns out to be the one his sister is about to marry into." },
+    { n: "Temper", s: "A corrupt police officer who takes bribes changes completely after a crime against a girl, and decides to take on the system himself." },
+    { n: "Aravinda Sametha Veera Raghava", s: "After his father is killed, the son of a faction leader tries to end a bloody family war in Rayalaseema." },
+    { n: "Akhanda", s: "A fearless Aghora steps in to protect a girl and a district from a corrupt mining mafia, and he has a very different twin brother." },
+    { n: "Hi Nanna", s: "A father tells his curious young daughter a bedtime love story every night, and the girl in that story turns out to be real." },
+    { n: "Bharat Ane Nenu", s: "A young man studying abroad returns home after his father's death and unexpectedly becomes chief minister, determined to run the state by his own honest rules." },
+    { n: "Major", s: "The true story of an army commando who gave his life saving hostages during the 2008 attacks on Mumbai hotels." },
+    { n: "Hanu-Man", s: "A small-time thief in a village gets superpowers from a magical gem and has to face a rich man who wants the same power." },
+    { n: "Race Gurram", s: "Two brothers who cannot stand each other end up in a war of wits after a ruthless politician enters their lives." },
+    { n: "Manam", s: "A family across three generations are separated by fate and keep finding each other again, lifetime after lifetime." },
+    { n: "Ye Maaya Chesave", s: "A young aspiring filmmaker falls for a girl from a different faith, and both families are against it." },
+    { n: "Sita Ramam", s: "A young woman sets out to deliver a soldier's letters, written decades ago, to the person they were meant for." },
+    { n: "Mahanati", s: "A journalist traces the life of a legendary actress, from her days as a child artist to being the biggest star in the industry, and her fall." },
+    { n: "Bommarillu", s: "A son smothered by his father's control falls in love with a free-spirited girl, and learns what it takes to stand up for himself." },
+    { n: "Baahubali 2: The Conclusion", s: "The crowned prince of Mahishmati is exiled by his own family, and the whole kingdom is left asking one question about the man who stabbed him." },
+    { n: "Gangotri", s: "A boy raised by a guru in the mountains returns to the world below, where a family feud drags him into a war." },
+    { n: "Arya", s: "A cheerful young man falls for a girl with unstoppable one-sided love, while her fiancé turns out to be far more dangerous than he looks." },
+    { n: "Bunny", s: "A student in Visakhapatnam takes on a corrupt politician to protect a family he has come to love, hiding his own past in the process." },
+    { n: "Happy", s: "A free-spirited young man who runs from responsibility gets tangled up with a girl and a bunch of unlikely friends." },
+    { n: "Desamuduru", s: "A small-town journalist finds himself protecting a girl who happens to be a Himalayan saint's daughter and is hunted by a corrupt chief minister." },
+    { n: "Parugu", s: "A girl runs away from her own wedding with a boy who knows her family would never accept, and the two are chased across the state." },
+    { n: "Arya 2", s: "Two best friends love the same girl, and one of them goes dark with obsession while the other tries to protect her." },
+    { n: "Varudu", s: "A groom is kidnapped on his wedding day by a man who wants to make sure the marriage never happens." },
+    { n: "Vedam", s: "Five strangers in Hyderabad live very different lives, and one day their paths cross in a way that changes all of them." },
+    { n: "Badrinath", s: "A guardian of a sacred temple falls in love with a girl whose family has a long-standing grudge against him." },
+    { n: "Julayi", s: "An unemployed graduate stumbles onto a bank robbery plan that could make him rich, if he can outwit a ruthless gangster." },
+    { n: "Yevadu", s: "A man whose face has been reconstructed after a brutal attack returns for revenge against the gangster who nearly killed him." },
+    { n: "S/O Satyamurthy", s: "A rich young man must start again from scratch when his father passes away and a debt that nobody mentioned comes to the surface." },
+    { n: "Sarrainodu", s: "A man with a short fuse and a heart of gold takes on a corrupt politician, one fight at a time." },
+    { n: "Kushi", s: "Two stubborn young lovers who each refuse to say sorry first keep ruining a perfect romance with their own egos." },
+    { n: "Jalsa", s: "A roaming young man with a past in the Naxal movement returns to his village to fix a family wrong, and he has an old love waiting." },
+    { n: "Panjaa", s: "A stylish man with an odd habit of hating wealth is hunted by a mafia boss, and the real reason comes out when his past does." },
+    { n: "Katamarayudu", s: "A kind-hearted village strongman refuses to bow down to anybody, even when it means taking on his own brothers' enemies." },
+    { n: "Vakeel Saab", s: "Three girls are accused of a crime, and a retired lawyer who has stayed silent for years returns to court to defend them." },
+    { n: "Bheemla Nayak", s: "An honest cop and a retired army havildar with pride as big as the other's go head to head over a small mistake." },
+    { n: "Chirutha", s: "A carefree young man in Hyderabad tries to bring down a dangerous don after being tricked into fighting his battle." },
+    { n: "Orange", s: "A man who believes love is a lie meets a girl who believes it is everything, and neither of them quite keeps to their rules." },
+    { n: "Racha", s: "A man who works as a taxi driver in Hyderabad goes after a rowdy gang lord who wants to make him a pawn in a blood feud." },
+    { n: "Naayak", s: "A young man's life is turned upside down when his lookalike, a feared underworld figure, takes his identity." },
+    { n: "Okkadu", s: "A kabaddi player in Hyderabad rescues a girl from a forced marriage to a faction leader, and goes up against him in his own city." },
+    { n: "Khaleja", s: "A taxi driver with a strange knack for being in the right place at the right time ends up as the saviour of a village." },
+    { n: "Dookudu", s: "A cop who has been playing a double game as a local goon is hunted down by both the cops and the underworld." },
+    { n: "Businessman", s: "A man from a small village dreams of building a gangster's empire in Mumbai, and he has a plan that nobody could see coming." },
+    { n: "Maharshi", s: "A billionaire on top of the world returns to his village and has to face a friend he left behind and a cause he forgot." },
+    { n: "Sarileru Neekevvaru", s: "An army major on a mission to escort a family ends up taking on a ruthless businessman across a long train ride." },
+    { n: "Guntur Kaaram", s: "A man estranged from his mother and her powerful family is forced to confront the past and the family he never knew." },
+    { n: "Simhadri", s: "A loyal servant protects a young woman in a distant village, and his sad past is slowly revealed with each fight." },
+    { n: "Yamadonga", s: "A thief sent to the afterlife by mistake finds a loophole in the rules and tricks the god of death himself." },
+    { n: "Kantri", s: "A lawyer's daughter falls for a man who works as a street thug, and his rough ways bring her family face to face with powerful men." },
+    { n: "Adhurs", s: "Twin brothers, one a timid priest and the other a loud, brave guy, swap roles to protect a family from a mad don." },
+    { n: "Baadshah", s: "A lookalike who stays in a lawless land of mafia gangs takes down a feared don while trying to keep his family safe." },
+    { n: "Janatha Garage", s: "A mechanic who runs a workshop as a family for the poor stands with a young man who loves nature, and the two take on injustice together." },
+    { n: "Jai Lava Kusa", s: "Three brothers separated by fate, one of whom is bitter and violent, plan a showdown that ends in a family reunion." },
+    { n: "Devara: Part 1", s: "A fearless man protects his coastal people from the dangers of smuggling at sea, until his own son pays the price." },
+    { n: "Varsham", s: "A girl from a rich family falls for a poor singer, while a violent criminal obsessed with her stands in the way." },
+    { n: "Chatrapathi", s: "A refugee boy from Sri Lanka grows up in a harbour town and rises to take on those who treated his people as slaves." },
+    { n: "Yogi", s: "A man raised in the underworld sets out to find the mother he lost as a child." },
+    { n: "Billa", s: "A stylish international don has a lookalike, and a policeman needs a petty thief to take his place and bring him down." },
+    { n: "Darling", s: "A young man who is shy in love gets a girl's attention through a series of misunderstandings and then loses her again." },
+    { n: "Mr. Perfect", s: "A workaholic who believes in logic and a free-spirited girl clash over what makes a good relationship." },
+    { n: "Rebel", s: "A hero grows up trying to carry out a promise to his dying guardian, but the world stands in his way." },
+    { n: "Saaho", s: "An undercover cop and a master thief in Mumbai end up in the middle of a deadly heist in a city ruled by crime lords." },
+    { n: "Radhe Shyam", s: "A palmist who has never believed in love meets a doctor on a trip to Italy, where his own predictions fall apart." },
+    { n: "Adipurush", s: "A prince goes into exile with his wife and brother, and a demon king steals her away across the sea." },
+    { n: "Happy Days", s: "A group of engineering college friends enjoy their first year, falling in love, fighting and growing up together." },
+    { n: "Godavari", s: "A boy and a girl on a boat trip along a river get to know each other while a family drama unfolds along the banks." },
+    { n: "Fidaa", s: "A Telangana village girl with a strong will clashes and bonds with an NRI doctor who has come home for his brother's wedding." },
+    { n: "Love Story", s: "A boy from an oppressed community and a girl from a rich family find music in each other and fight for the right to be together." },
+    { n: "Majili", s: "A cricketer whose life crumbled after a lost love slowly rebuilds when a young woman steps in and teaches him how to care again." },
+    { n: "Geethanjali", s: "A friendly young man moves into a house haunted by a spirit, and the more he tries to ignore it, the more it follows him." },
+    { n: "Dhee", s: "A young man is mistaken for a courier and finds himself between two groups of gangsters in a city filled with bluffs." },
+    { n: "Ready", s: "A man pretends to be a cousin at a family wedding in order to win over a girl and avoid her violent relatives." },
+    { n: "Kick", s: "A thrill seeker who will do anything for a rush steals from the wrong people, and a cop is on his trail." },
+    { n: "Pelli Choopulu", s: "A topper who gives up his career for a street food truck falls into a bumpy friendship that turns into love." },
+    { n: "Brochevarevarura", s: "Three friends find themselves in a film school in a series of wacky events when a kidnapping makes them heroes." },
+    { n: "Mathu Vadalara", s: "A rookie delivery agent is dragged into a messy murder case with his friend in a night of dark humour." },
+    { n: "Goodachari", s: "A young man joins a secret agency for a sacred mission, and soon learns that the real enemy may be among his own." },
+    { n: "Kshanam", s: "A man returns to meet an old girlfriend who says her daughter is missing, but nobody believes a child ever existed." },
+    { n: "Evaru", s: "A police officer investigates a rape, and the more he digs, the less the story matches what the witness says happened." },
+    { n: "Shyam Singha Roy", s: "A modern filmmaker is accused of plagiarism, and the story of an earlier writer bleeds into his own life." },
+    { n: "Taxiwaala", s: "A young man buys a second-hand car and soon learns that it comes with a ghost who has something to settle." },
+    { n: "Dear Comrade", s: "A student leader with a fiery temper has to help the woman he loves recover after a traumatic experience." },
+    { n: "Liger", s: "A tea-seller's son from Mumbai with a stammer goes after a place in the MMA ring, guided by his determined mother." },
+    { n: "World Famous Lover", s: "A man's love life through four chapters is told through his heartbreak and the women who changed him." },
+    { n: "Waltair Veerayya", s: "A rowdy fisherman of Visakhapatnam goes undercover and unites with his estranged brother to take down a drug lord." },
+    { n: "Veera Simha Reddy", s: "A powerful faction leader in Rayalaseema is away, and the story of what he left behind slowly comes to light." },
+    { n: "Bhagavanth Kesari", s: "A tough ex-convict makes a promise to a dying friend and trains the man's daughter to be fearless." },
+    { n: "Legend", s: "A political rival tries to stop a fearless man from giving justice to the people, but he fights back in a style of his own." },
+    { n: "Simha", s: "A fearless district collector goes after the crooks who killed his family and takes on a ruthless industrialist." },
+    { n: "Indra", s: "A reformed man who once ruled Varanasi hides his violent past while he lives peacefully with his family in a small village." },
+    { n: "Tagore", s: "A professor teaches by day and fights corruption by night, with a network of students as his eyes and ears." },
+    { n: "Stalin", s: "A man helps others without expecting anything and asks them to pass on the favour to three more people." },
+    { n: "F2: Fun and Frustration", s: "Two brothers-in-law who are tired of their wives' demands try to run away from them and cause even more trouble." },
+    { n: "Gudumba Shankar", s: "A carefree loafer who has no job or goal meets a girl whose family wants nothing to do with him." },
+    { n: "Ghajini", s: "A businessman with short-term memory loss tattoos clues all over his body to hunt down the man who killed his beloved." },
+    { n: "Lakshmi", s: "A brave young man steps in to protect a girl from a powerful family that wants her gone." },
+    { n: "Malliswari", s: "A princess and a village youth meet in an unusual setting, and their love faces a test in a royal family." },
+    { n: "Manmadhudu", s: "A man who hates women is persuaded to talk to a girl through a friend and slowly lets her into his heart." },
+    { n: "Oopiri", s: "A rich man who cannot move his body hires a street-smart ex-convict as his caregiver, and the two change each other's lives." },
+    { n: "Premam", s: "A young man falls in love three times across his school years, his college life and his working life." },
+    { n: "Master", s: "A heavy-drinking professor takes a job at a juvenile school and goes up against a gangster who uses boys as pawns." },
+    { n: "Leo", s: "A peaceful cafe owner in Himachal whose past catches up with him when a pair of gangsters come to claim him." },
+    { n: "Jailer", s: "A retired prison warden with a calm life turns lethal when his son goes missing in a case with a ruthless smuggling ring." },
+    { n: "Robo", s: "A scientist builds a human-like machine that falls in love with his fiancée and turns violent when it is rejected." },
+    { n: "Khaidi No. 150", s: "A prisoner who looks identical to a farmer-activist takes his place and fights the corporate land grab that destroyed a village." },
+    { n: "Sye Raa Narasimha Reddy", s: "A chieftain of Rayalaseema rises against the British, long before the freedom struggle became a national movement." },
+    { n: "Mirchi", s: "A cold, calm man from a feuding family hides his true background until his love is put at risk by an old rivalry." },
+    { n: "Pushpa 2: The Rule", s: "The labourer who became a smuggling kingpin now faces a rival police officer and a growing empire that refuses to bow." }
+  ];
+
+  // ── theme: follows the phone unless the player chose one in Profile ──
+  const sysDark = matchMedia('(prefers-color-scheme: dark)');
+  function theme() {
+    let pref = 'system'; try { pref = localStorage.getItem('cf_theme') || 'system'; } catch (e) {}
+    const t = pref === 'system' ? (sysDark.matches ? 'dark' : 'light') : pref;
+    document.documentElement.dataset.theme = t;
+    document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#f4f4f8' : '#0a0a0f';
+  }
+  theme(); sysDark.addEventListener('change', theme);
+
+  // ── no repeats until every story has come up (remembered on this phone) ──
+  let used = []; try { used = JSON.parse(localStorage.getItem('cf_story_used') || '[]'); } catch (e) {}
+  let cur = null, played = 0, busy = false;
+  function nextStory() {
+    if (used.length >= STORIES.length) used = [];
+    const left = STORIES.map((_, i) => i).filter(i => !used.includes(i));
+    const i = left[Math.floor(Math.random() * left.length)];
+    used.push(i); try { localStorage.setItem('cf_story_used', JSON.stringify(used)); } catch (e) {}
+    cur = STORIES[i]; played++;
+    const el = $('story'); el.textContent = cur.s;
+    el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
+    $('slot').classList.remove('open'); $('ans').textContent = '';
+    $('count').textContent = 'STORY ' + played;
+    fit();
+  }
+  function showAns() { $('ans').textContent = cur.n; $('slot').classList.add('open'); }
+  function onNext() {
+    if (busy) return;
+    if (cur && !$('slot').classList.contains('open')) { busy = true; showAns(); setTimeout(() => { busy = false; nextStory(); }, 1500); }
+    else nextStory();
+  }
+  // the story as big as fits, so nothing ever scrolls
+  function fit() {
+    const el = $('story'), stage = el.parentElement;
+    let fs = Math.min(Math.max(innerWidth * .052, 17), innerHeight * .045, 30); el.style.fontSize = fs + 'px';
+    while (stage.scrollHeight > stage.clientHeight + 1 && fs > 13) { fs -= 1; el.style.fontSize = fs + 'px'; }
+  }
+  addEventListener('resize', () => { if ($('s-play').classList.contains('on')) fit(); });
+
+  function show(id) { document.querySelectorAll('#game .gs').forEach(s => s.classList.toggle('on', s.id === id)); }
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = CinefiedHowTo.templates.readGuess({
+    c: 'var(--accent)', t1: 'Press START. A story line from a Telugu movie appears.', t2: 'Read it out loud. Everyone shouts the movie they think it is.',
+    head: 'GUESS THE MOVIE', gap: 10,
+    lines: [['A cop hides', 'm', 7, '#fff'], ['inside a gang', 'm', 7, '#fff'], ['to bring down', 'm', 7, '#fff'], ['the big don.', 'm', 7, '#fff']],
+    lines2: [['A man is reborn', 'm', 7, '#fff'], ['as a fly to take', 'm', 7, '#fff'], ['his revenge.', 'm', 7, '#fff']],
+    guesses: ['Athadu?', 'Pokiri!', 'Okkadu?'], mine: 'Dookudu?', right: 1, answer: 'POKIRI'
+  });
+
+  const HT = CinefiedHowTo.create($('howto'), HOWTO);
+  const openSheet = () => { $('rulesSheet').classList.add('open'); $('scrim').classList.add('open'); HT.play(); };
+  const closeSheet = () => { HT.stop(); $('rulesSheet').classList.remove('open'); $('scrim').classList.remove('open'); };
+  // every time the game is opened, the how-to-play plays first
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => { if ($('s-home').classList.contains('on')) openSheet(); }, 450));
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#startBtn')) { played = 0; show('s-play'); return nextStory(); }
+    if (t.closest('#showBtn')) return showAns();
+    if (t.closest('#nextBtn')) return onNext();
+    if (t.closest('#stopBtn')) return show('s-home');
+    if (t.closest('#homeBtn')) return void history.back();
+    if (t.closest('[data-rules]')) return openSheet();
+    if (t.closest('#scrim') || t.closest('[data-close]')) return closeSheet();
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Dialogue Detective · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  /* Dialogue Detective (was Guess by Dialogue): one phone. A famous dialogue appears, read it like the hero, everyone shouts the movie. */
+  :root{--c:var(--accent)}
+  [hidden]{display:none!important}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{touch-action:manipulation}
+  .gs{display:none;position:fixed;inset:0;flex-direction:column;
+      padding:calc(10px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
+  .gs.on{display:flex;animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  .wrap{flex:1;min-height:0;display:flex;flex-direction:column;max-width:460px;width:100%;margin:0 auto}
+  .go{background:var(--c);box-shadow:0 10px 26px color-mix(in srgb,var(--c) 35%,transparent)}
+
+  /* playing */
+  #s-play{background:radial-gradient(70% 45% at 20% 10%,color-mix(in srgb,var(--c) 10%,transparent),transparent 70%),radial-gradient(50% 45% at 85% 90%,color-mix(in srgb,var(--blue) 9%,transparent),transparent 70%),var(--bg)}
+  .top{display:flex;justify-content:space-between;align-items:center;min-height:42px}
+  .top small{font-size:11px;letter-spacing:2px;color:var(--muted)}
+  .stage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(14px,3dvh,26px);max-width:760px;width:100%;margin:0 auto;padding-bottom:8px}
+  .lbl{font-size:11px;letter-spacing:4px;color:var(--muted)}
+  .lbl i{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c);margin-right:10px;vertical-align:1px}
+  #story{font-family:var(--mono);font-weight:500;line-height:1.5;color:var(--text);max-width:32ch;font-style:italic}
+  .q{font-family:var(--display);font-size:clamp(70px,14dvh,110px);line-height:.5;color:var(--c);height:.42em;margin-bottom:-6px}
+  @media (orientation:landscape) and (max-height:500px){.q{display:none}}
+  #story.in{animation:storyIn .45s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes storyIn{from{opacity:0;transform:translateY(10px)}}
+  /* the answer slot: SHOW ANSWER turns into the answer, softly */
+  .slot{display:grid;place-items:center;width:100%;min-height:clamp(64px,13dvh,100px)}
+  .slot > *{grid-area:1/1;transition:opacity .55s ease,transform .55s cubic-bezier(.2,.8,.2,1),filter .55s ease}
+  .show{border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--mono);font-size:12px;letter-spacing:3px;padding:12px 24px;border-radius:999px;cursor:pointer;box-shadow:var(--lift)}
+  .show:active{transform:scale(.96)}
+  .ans{font-family:var(--display);font-weight:400;font-size:clamp(34px,min(10vw,9dvh),64px);letter-spacing:2px;line-height:1;color:var(--text);
+       background:color-mix(in srgb,var(--c) 10%,var(--surface));border:1.5px solid var(--c);border-radius:18px;padding:10px 26px 8px;max-width:100%;
+       box-shadow:0 10px 30px color-mix(in srgb,var(--c) 22%,transparent);opacity:0;transform:translateY(14px) scale(.94);filter:blur(8px);pointer-events:none;text-wrap:balance}
+  .slot.open .show{opacity:0;transform:translateY(-10px) scale(.96);pointer-events:none}
+  .slot.open .ans{opacity:1;transform:none;filter:none}
+  .next{width:min(320px,100%);margin:0 auto}
+  .hero h1{overflow-wrap:normal;word-break:normal;font-size:clamp(44px,min(15vw,9dvh),84px)}
+  /* what the game is, right under its name */
+  .aka{font-family:var(--display);font-size:clamp(20px,3.4dvh,26px);letter-spacing:3px;color:var(--c);line-height:1;margin:2px 0 10px;position:relative}
+  @media (orientation:landscape) and (max-height:500px){.stage{gap:10px}.next{width:min(260px,50%)}}
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- 1. ENTRY -->
+  <section class="gs on" id="s-home">
+    <div class="bar">
+      <button class="icon-btn" type="button" id="homeBtn" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="chipbtn" type="button" data-rules>How to play</button>
+    </div>
+    <div class="wrap">
+      <div class="hero">
+        <div class="glyph" aria-hidden="true">D</div>
+        <div class="kind"><i></i>Pass one phone</div>
+        <h1>DIALOGUE DETECTIVE</h1>
+        <div class="aka">GUESS THE MOVIE FROM THE LINE</div>
+        <p>A famous dialogue appears. Say it like the hero and let everyone shout the movie.</p>
+        <div class="facts"><span class="fact">1 phone</span><span class="fact">Any number</span><span class="fact">No timer</span></div>
+      </div>
+      <button class="btn go" type="button" id="startBtn">START</button>
+    </div>
+  </section>
+
+  <!-- 2. A STORY -->
+  <section class="gs" id="s-play">
+    <div class="top">
+      <small id="count"></small>
+      <button class="icon-btn" type="button" id="stopBtn" aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="stage">
+      <div class="lbl"><i></i>WHICH MOVIE IS THIS FROM?</div>
+      <div class="q" aria-hidden="true">“</div><div id="story"></div>
+      <div class="slot" id="slot">
+        <button class="show" type="button" id="showBtn">SHOW ANSWER</button>
+        <div class="ans" id="ans"></div>
+      </div>
+    </div>
+    <button class="btn go next" type="button" id="nextBtn">NEXT</button>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet ht-sheet" id="rulesSheet" aria-label="How to play"><div class="grab"></div><div id="howto"></div></section>
+
+<script src="core/howto.js?v=0.2.0"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  // ═════════════ DIALOGUES (edit here: n = movie, s = the dialogue, written as it is said; no quote marks needed) ═════════════
+  const STORIES = [
+    { n: "Pushpa: The Rise", s: "Pushpa ante flower anukuntunnara? Fire!" },
+    { n: "Baahubali 2: The Conclusion", s: "Naa maate shaasanam." },
+    { n: "Pokiri", s: "Okka saari commit ayithe naa maata nene vinanu." },
+    { n: "Pokiri", s: "Evadu kodithe dimma thirigi mind block ayipothado aade Pandugaadu." },
+    { n: "Gabbar Singh", s: "Naaku konchem thikka undi, daaniko lekka undi." },
+    { n: "Indra", s: "Veera Shankar Reddy... mokke kada ani peekesthe peeka kostha." },
+    { n: "Magadheera", s: "Okkokkadini kaadu Sher Khan... okesaari vanda mandini pampinchu." },
+    { n: "Simha", s: "Choodu, oka vaipe choodu... rendo vaipu chudal anukoku, tattukolev." },
+    { n: "Mirchi", s: "Kathi vaadatam modalupedithe naakanna baaga evaru vaadaleru." },
+    { n: "Businessman", s: "Nee target 10 miles ayithe, aim for the 11th mile." },
+    { n: "Julayi", s: "Cheppali sir... nannu gelakoddu, chastharu ani cheppakapothe ela?" },
+    { n: "Athadu", s: "Gun choodalanuko tappu ledu, kaani bullet choodalanukoku, chachipothav." },
+    { n: "Jalsa", s: "Yuddhamlo gelavadam ante shatruvuni odinchadam, champadam kaadu." },
+    { n: "V", s: "Sollaapu... dammunte nannu aapu." },
+    { n: "Pelli Choopulu", s: "Naa saavu nenu sastha, neekenduku?" },
+    { n: "Narasimha", s: "Athiga aashapade magavaadu, athiga aaveshapade aadadi sukhapadinattu charitralo ledu." },
+    { n: "Idiot", s: "City ki entho mandi commissioners vasthuntaru pothuntaru... Chanti gaadu eppudu ikkade untadu, local." },
+    { n: "Temper", s: "Naa peru Daya... naaku lenide adi." },
+    { n: "Tagore", s: "Telugu bhashalo naaku nachani oke okka padam kshaminchadam." },
+    { n: "Businessman", s: "Yuddham chethakaanode dharmam gurinchi maatladathaadu sir." },
+    { n: "Aadi", s: "Aravaku... ammathodu addanga narikestha." },
+    { n: "Aravinda Sametha Veera Raghava", s: "Kantapaddava kanikaristaanemo, ventapaddava narikestha." },
+    { n: "Janatha Garage", s: "Balavanthudu balahenudini bhayapetti bathakadam aanavaayithi. Kaani aa balahenudi pakkana kooda oka balam undi." },
+    { n: "Jai Lava Kusa", s: "Aa Ravanudini champaalante samudram daatala... ee Ravanudini champaalante samudramantha dhairyam undala?" },
+    { n: "Aagadu", s: "Dikki balisina kodi chicken shop mundukochi thoda kottindanta." },
+    { n: "Chatrapathi", s: "Oka adugu... oke okka adugu." },
+    { n: "Shivamani", s: "Naa peru Shivamani, naaku konchem mental..." },
+    { n: "Gharana Mogudu", s: "Okkasaari face turning ichukondi." },
+    { n: "Gang Leader", s: "Cheyyi choosava entha rough ga undo... rough aadinchestha." },
+    { n: "Baasha", s: "Nenu okkasari chepthe vanda saarlu cheppinattu." },
+    { n: "Shivaji", s: "Nanna, pandulu gumpuga vasthayi... simham single ga vasthundi." },
+    { n: "Indra", s: "Tappu naa vaipu undi kabatti tala dinchukuni velthunna, ledante talalu teesukellevaadni." },
+    { n: "Narasimha", s: "Naa daari rahadaari." },
+    { n: "Temper", s: "Neeku ego lopala untundemo, naaku naa chuttu Wi-Fi la untundi." },
+    { n: "Bommarillu", s: "Anthena? Inkem kavali? Veelaithe naalugu maatalu, kudirithe cup coffee!" },
+    { n: "Teen Maar", s: "Kaaranam leni kopam, gauravam leni prema, badhyatha leni yavvanam, gnaapakam leni vruddhapyam anavasaram." },
+    { n: "S/O Satyamurthy", s: "Manam baagunnappudu lekkalu maatlaadi, kashtallo unnappudu viluvalu maatlaadakoodadu." },
+    { n: "Temper", s: "Neeku naaku friendship emitira? Nuvvu villain, nenu hero!" },
+    { n: "Temper", s: "Username Daya, password Police!" },
+    { n: "Neninthe", s: "Nenu entha yedhavano naake telidu!" },
+    { n: "Desamuduru", s: "You know Guntur bolke ek sheher hai? Nenu ikkada kottaananuko, resound udhar aatha!" }
+  ];
+
+  // ── theme: follows the phone unless the player chose one in Profile ──
+  const sysDark = matchMedia('(prefers-color-scheme: dark)');
+  function theme() {
+    let pref = 'system'; try { pref = localStorage.getItem('cf_theme') || 'system'; } catch (e) {}
+    const t = pref === 'system' ? (sysDark.matches ? 'dark' : 'light') : pref;
+    document.documentElement.dataset.theme = t;
+    document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#f4f4f8' : '#0a0a0f';
+  }
+  theme(); sysDark.addEventListener('change', theme);
+
+  // ── no repeats until every story has come up (remembered on this phone) ──
+  let used = []; try { used = JSON.parse(localStorage.getItem('cf_dialogue_used') || '[]'); } catch (e) {}
+  let cur = null, played = 0, busy = false;
+  function nextStory() {
+    if (used.length >= STORIES.length) used = [];
+    const left = STORIES.map((_, i) => i).filter(i => !used.includes(i));
+    const i = left[Math.floor(Math.random() * left.length)];
+    used.push(i); try { localStorage.setItem('cf_dialogue_used', JSON.stringify(used)); } catch (e) {}
+    cur = STORIES[i]; played++;
+    const el = $('story'); el.textContent = cur.s;
+    el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
+    $('slot').classList.remove('open'); $('ans').textContent = '';
+    $('count').textContent = 'DIALOGUE ' + played;
+    fit();
+  }
+  function showAns() { $('ans').textContent = cur.n; $('slot').classList.add('open'); }
+  function onNext() {
+    if (busy) return;
+    if (cur && !$('slot').classList.contains('open')) { busy = true; showAns(); setTimeout(() => { busy = false; nextStory(); }, 1500); }
+    else nextStory();
+  }
+  // the story as big as fits, so nothing ever scrolls
+  function fit() {
+    const el = $('story'), stage = el.parentElement;
+    let fs = Math.min(Math.max(innerWidth * .058, 18), innerHeight * .05, 32); el.style.fontSize = fs + 'px';
+    while (stage.scrollHeight > stage.clientHeight + 1 && fs > 13) { fs -= 1; el.style.fontSize = fs + 'px'; }
+  }
+  addEventListener('resize', () => { if ($('s-play').classList.contains('on')) fit(); });
+
+  function show(id) { document.querySelectorAll('#game .gs').forEach(s => s.classList.toggle('on', s.id === id)); }
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = CinefiedHowTo.templates.readGuess({
+    c: 'var(--accent)', t1: 'Press START. A famous Telugu movie dialogue appears.', t2: 'Say it out loud, like the hero would. Everyone shouts the movie they think it is.',
+    head: 'GUESS THE MOVIE', gap: 12,
+    lines: [['"OKKASARI', 'd', 12, '#fff'], ['COMMIT AYITHE,', 'd', 12, '#fff'], ['NAA MAATA', 'd', 12, '#fff'], ['NENE VINANU"', 'd', 12, '#fff']],
+    lines2: [['"NENU', 'd', 12, '#fff'], ['TRENDS FOLLOW', 'd', 12, '#fff'], ['AVVANU, SET', 'd', 12, '#fff'], ['CHESTHA"', 'd', 12, '#fff']],
+    say: '"Okkasari commit ayithe…"',
+    guesses: ['Gabbar Singh?', 'Pokiri!', 'Dookudu?'], mine: 'Athadu?', right: 1, answer: 'POKIRI'
+  });
+
+  const HT = CinefiedHowTo.create($('howto'), HOWTO);
+  const openSheet = () => { $('rulesSheet').classList.add('open'); $('scrim').classList.add('open'); HT.play(); };
+  const closeSheet = () => { HT.stop(); $('rulesSheet').classList.remove('open'); $('scrim').classList.remove('open'); };
+  // every time the game is opened, the how-to-play plays first
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => { if ($('s-home').classList.contains('on')) openSheet(); }, 450));
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#startBtn')) { played = 0; show('s-play'); return nextStory(); }
+    if (t.closest('#showBtn')) return showAns();
+    if (t.closest('#nextBtn')) return onNext();
+    if (t.closest('#stopBtn')) return show('s-home');
+    if (t.closest('#homeBtn')) return void history.back();
+    if (t.closest('[data-rules]')) return openSheet();
+    if (t.closest('#scrim') || t.closest('[data-close]')) return closeSheet();
+  });
+})();
+</script>
+</body>
+</html>

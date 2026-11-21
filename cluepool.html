@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Clue Pool · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  :root{--ta:var(--accent);--tb:var(--blue);--t:var(--ta);--o:var(--tb)}
+  [hidden]{display:none!important}
+  #game{display:none}
+  #game.on{display:block}
+  #game .gs{display:none;height:100vh;height:var(--app-h,100dvh);overflow:hidden;flex-direction:column;max-width:460px;margin:0 auto;position:relative;
+      padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px))}
+  #game .gs.on{display:flex}
+  #game .gs.in{animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  .teamB{--t:var(--tb);--o:var(--ta)}
+
+  .l-mid{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1;min-width:0}
+  .l-mid b{font-family:var(--display);font-weight:400;font-size:19px;letter-spacing:2.5px;white-space:nowrap}
+  .l-mid small{font-size:10px;color:var(--t);white-space:nowrap;letter-spacing:1px}
+  .clock{width:40px;height:40px;flex:none;position:relative;display:grid;place-items:center;font-size:11px;font-variant-numeric:tabular-nums}
+  .clock svg{position:absolute;inset:0;transform:rotate(-90deg)}
+  .clock circle{fill:none;stroke-width:3}
+  .clock .bg{stroke:var(--border)} .clock .fg{stroke:var(--t);stroke-linecap:round;stroke-dasharray:113}
+
+  /* the two teams' tokens */
+  .tokbar{display:flex;gap:8px;margin:clamp(6px,1.4dvh,12px) 0 clamp(8px,1.6dvh,14px)}
+  .tok{flex:1;border-radius:14px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);display:flex;flex-direction:column;gap:5px;min-width:0}
+  .tok.me{border-color:color-mix(in srgb,var(--t) 55%,var(--border));background:color-mix(in srgb,var(--t) 8%,var(--surface))}
+  .tok .nm{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+  .tok .nm b{font-family:var(--display);font-weight:400;font-size:16px;letter-spacing:1.5px;color:var(--k)}
+  .dots{display:flex;gap:4px}
+  .dots i{flex:1;height:6px;border-radius:3px;background:var(--border)}
+  .dots i.f{background:var(--k)}
+  .tok.them .dots i{height:4px}
+
+  /* clue cards */
+  .clues{display:flex;flex-direction:column;gap:clamp(5px,.9dvh,8px)}
+  .cl{display:flex;gap:10px;align-items:center;border-radius:14px;padding:clamp(8px,1.4dvh,12px) 12px;background:var(--surface);border:1px solid var(--border);min-height:0}
+  .cl small{font-size:9.5px;letter-spacing:1.8px;color:var(--muted);width:68px;flex:none;text-transform:uppercase}
+  .cl span{font-size:13.5px;line-height:1.35;flex:1;min-width:0}
+  .cl.open{border-color:color-mix(in srgb,var(--t) 45%,var(--border))}
+  .cl.open small{color:var(--t)}
+  .cl.new{animation:flip .5s cubic-bezier(.2,.8,.2,1)}
+  @keyframes flip{from{transform:rotateX(70deg);opacity:0}}
+  .cl.shut{border-style:dashed;color:var(--muted)}
+  .cl.shut span{font-size:12px;color:var(--muted)}
+  .cl.shut svg{width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:2;flex:none}
+  .cl .free{font-size:9px;letter-spacing:1px;color:var(--green);border:1px solid color-mix(in srgb,var(--green) 40%,transparent);border-radius:6px;padding:1px 5px}
+
+  .hint{margin-top:clamp(8px,1.4dvh,12px);display:flex;align-items:center;gap:10px;width:100%;border:0;border-radius:16px;padding:12px 14px;background:var(--t);color:#fff;cursor:pointer;font-family:var(--mono);text-align:left;
+        box-shadow:0 8px 22px color-mix(in srgb,var(--t) 30%,transparent)}
+  .hint b{font-family:var(--display);font-weight:400;font-size:21px;letter-spacing:2px;flex:1}
+  .hint small{font-size:10.5px;opacity:.9}
+  .hint .ready{display:flex}
+  .hint .ready .pfp{width:20px;height:20px;font-size:9px;margin-left:-5px;box-shadow:0 0 0 2px var(--t);opacity:.45}
+  .hint .ready .pfp.ok{opacity:1}
+  .hint.mine{background:color-mix(in srgb,var(--t) 16%,var(--surface));color:var(--t);box-shadow:none;border:1.5px solid var(--t)}
+  .hint.mine .ready .pfp{box-shadow:0 0 0 2px var(--surface)}
+  .hint[disabled]{background:var(--surface2);color:var(--muted);box-shadow:none;cursor:default}
+
+  .log{display:flex;gap:6px;flex-wrap:wrap;margin-top:clamp(8px,1.4dvh,12px);min-height:22px;align-items:center}
+  .log small{font-size:9.5px;letter-spacing:1.8px;color:var(--muted);margin-right:2px}
+  .log span{font-size:11px;padding:3px 8px;border-radius:8px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--muted);text-decoration:line-through;text-decoration-color:var(--accent)}
+  .log span::before{content:"\2717 ";color:var(--accent);display:inline-block;text-decoration:none}
+  .gap{flex:1;min-height:6px}
+
+  /* the captain's proposal */
+  .prop{border-radius:18px;padding:14px;background:var(--surface);border:1.5px solid var(--t);text-align:center;box-shadow:var(--lift)}
+  .prop small{font-size:10.5px;color:var(--muted)}
+  .prop h3{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.6dvh,36px);letter-spacing:1.5px;line-height:1;margin:6px 0 4px;color:var(--text)}
+  .prop .votes{font-size:10.5px;color:var(--muted);margin-bottom:10px}
+  .prop .votes b{color:var(--t)}
+  .two{display:flex;gap:8px}
+  .two .btn{flex:1}
+  .go{background:var(--t);color:#fff;box-shadow:0 10px 26px color-mix(in srgb,var(--t) 30%,transparent)}
+  .note{text-align:center;font-size:11.5px;color:var(--muted);line-height:1.5}
+  .note b{color:var(--t);font-weight:500}
+
+  /* captain: search */
+  .search{position:relative}
+  .search input{width:100%;border:1.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:14px;padding:13px 14px 13px 40px;font-family:var(--mono);font-size:14px;outline:none}
+  .search input:focus{border-color:var(--t)}
+  .search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:17px;height:17px;stroke:var(--muted);fill:none;stroke-width:2}
+  .sugg{display:flex;flex-direction:column;gap:5px;margin:8px 0}
+  .sugg button{text-align:left;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:12px;padding:10px 12px;font-family:var(--mono);font-size:13px;cursor:pointer}
+  .sugg button b{color:var(--t);font-weight:500}
+  .sugg button.sel{border-color:var(--t);background:color-mix(in srgb,var(--t) 10%,var(--surface))}
+  .capline{display:flex;align-items:center;gap:8px;font-size:10.5px;letter-spacing:1.5px;color:var(--t);text-transform:uppercase;margin-bottom:8px}
+  .capline i{width:7px;height:7px;border-radius:50%;background:var(--t)}
+
+  .final{border-radius:14px;padding:10px 12px;text-align:center;background:color-mix(in srgb,var(--accent) 12%,var(--surface));border:1.5px solid var(--accent);margin-bottom:8px}
+  .final b{font-family:var(--display);font-weight:400;font-size:22px;letter-spacing:2px;color:var(--accent);display:block;line-height:1.1}
+  .final small{font-size:11px;color:var(--muted)}
+
+  /* flash after a locked guess */
+  .flash{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:5;text-align:center;pointer-events:none;animation:fl 1.6s ease-out both}
+  .flash b{font-family:var(--display);font-weight:400;font-size:64px;letter-spacing:3px;color:#fff;line-height:1}
+  .flash span{color:rgba(255,255,255,.9);font-size:13px;margin-top:6px}
+  .flash.no{background:color-mix(in srgb,var(--accent) 92%,transparent)}
+  .flash.yes{background:color-mix(in srgb,#12b86d 94%,transparent)}
+  @keyframes fl{0%{opacity:0}10%,75%{opacity:1}100%{opacity:0}}
+  @media (max-height:700px){.cl{padding:6px 10px}.cl span{font-size:12.5px}.hint{padding:9px 12px}.hint b{font-size:19px}.tokbar{margin:4px 0 8px}.log{margin-top:6px}.sugg{margin:6px 0}.sugg button{padding:8px 12px}.search input{padding:11px 14px 11px 40px}}
+
+  /* reveal + final */
+  .movie{text-align:center;margin:clamp(10px,2.6dvh,28px) 0 clamp(10px,2dvh,18px)}
+  .movie small{font-size:10.5px;letter-spacing:2.5px;color:var(--muted)}
+  .movie h1{font-family:var(--display);font-weight:400;font-size:clamp(42px,8dvh,64px);letter-spacing:2px;line-height:1;margin-top:6px}
+  .movie p{font-size:12px;color:var(--muted);margin-top:6px}
+  .vs{display:flex;gap:10px}
+  .vs > div{flex:1;border-radius:18px;padding:14px 10px;text-align:center;background:var(--surface);border:1px solid var(--border);box-shadow:var(--lift)}
+  .vs > div.win{border:1.5px solid var(--k);background:color-mix(in srgb,var(--k) 9%,var(--surface))}
+  .vs small{font-size:10px;letter-spacing:2px;color:var(--k)}
+  .vs b{display:block;font-family:var(--display);font-weight:400;font-size:46px;line-height:1;margin:4px 0;color:var(--k)}
+  .vs span{font-size:10.5px;color:var(--muted)}
+  .vs em{display:block;font-style:normal;font-size:10.5px;color:var(--text);margin-top:6px;line-height:1.4}
+  .bottom{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  .hist{flex:1;min-height:0;display:flex;flex-direction:column;gap:5px;margin-top:clamp(10px,2dvh,16px)}
+  .hrow{display:flex;align-items:center;gap:10px;border-radius:12px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);font-size:12px;flex:0 1 40px;min-height:30px}
+  .hrow i{font-style:normal;font-family:var(--display);font-size:16px;color:var(--muted);width:24px}
+  .hrow span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hrow b{font-family:var(--display);font-weight:400;font-size:18px;width:34px;text-align:center}
+  .hrow b.a{color:var(--ta)} .hrow b.b{color:var(--tb)}
+  .champ{text-align:center;margin:clamp(8px,2.4dvh,26px) 0 clamp(8px,2dvh,18px)}
+  .champ small{font-size:10.5px;letter-spacing:2.5px;color:var(--muted)}
+  .champ h1{font-family:var(--display);font-weight:400;font-size:clamp(44px,8dvh,64px);letter-spacing:2px;line-height:1;margin-top:4px;color:var(--ta)}
+
+  /* waiting room teams (core waiting room gets team columns) */
+  .wteams{display:flex;gap:10px;flex:1;min-height:0;margin-top:12px}
+  .wcol{flex:1;border-radius:18px;padding:12px;background:var(--surface);border:1px solid color-mix(in srgb,var(--k) 40%,var(--border));display:flex;flex-direction:column;gap:6px;min-width:0}
+  .wcol h4{font-family:var(--display);font-weight:400;font-size:20px;letter-spacing:2px;color:var(--k);display:flex;justify-content:space-between;align-items:center}
+  .wcol h4 small{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px}
+  .wp{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border)}
+  .wp .pfp{width:24px;height:24px;font-size:10px;flex:none}
+  .wp span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+  .wp span small{display:block;font-size:8.5px;letter-spacing:1.5px;color:var(--k)}
+  .wp em{font-style:normal;font-size:8.5px;letter-spacing:1px;color:var(--k);border:1px solid color-mix(in srgb,var(--k) 40%,transparent);border-radius:5px;padding:1px 4px}
+  .wp button{border:1px solid var(--border);background:none;color:var(--muted);border-radius:8px;width:26px;height:24px;cursor:pointer;font-size:12px}
+  .wjoin{margin-top:auto;border:1.5px dashed color-mix(in srgb,var(--k) 50%,var(--border));background:none;color:var(--k);border-radius:12px;padding:9px;font-family:var(--mono);font-size:11px;cursor:pointer}
+  .greenbtn{background:var(--green);color:#06140d;box-shadow:0 10px 26px color-mix(in srgb,var(--green) 25%,transparent)}
+
+  /* the waiting room's seats become two team columns */
+  .seats.cp{display:block;margin-top:clamp(8px,2dvh,16px)}
+  .seats.cp .wteams{flex:none;margin-top:0}
+  .seats.cp .wcol{min-height:clamp(90px,18dvh,220px)}
+  .seats.cp .wp{padding:clamp(2px,.6dvh,5px) 0}
+  .seats.cp .wcol{padding:10px;gap:clamp(2px,.6dvh,6px)}
+  .seats.cp .wjoin{padding:7px}
+  /* a full room must still fit: tighten the code block above the teams */
+  #s-wait.cpw .w-code{margin-top:clamp(0px,1dvh,14px)}
+  #s-wait.cpw .w-code .code{font-size:clamp(34px,7.5dvh,60px);line-height:1}
+  #s-wait.cpw .w-code .links{margin-top:2px}
+  #s-wait.cpw .status{margin-top:8px}
+  #s-wait.cpw .summary{margin-top:4px}
+  #s-wait.cpw .start{padding-top:10px}
+  #s-wait.cpw .w-code{margin-top:0}
+  @media (max-height:700px){.seats.cp .wp .pfp{width:20px;height:20px;font-size:9px}.seats.cp .wp{font-size:12px}.seats.cp .wcol h4{font-size:17px}.seats.cp .bal{margin-top:6px;padding:8px;font-size:15px}.seats.cp .wp button{height:20px}}
+  .seats.cp .wp.off{opacity:.45}
+  .seats.cp .bal{margin-top:10px;padding:11px;font-size:17px}
+  .wjoin[hidden]{display:none}
+  #leaveSheet p{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px}
+  .prop .mine{font-size:11px;color:var(--muted);padding:6px 0 2px}
+  .prop .btn{margin-top:0}
+  /* keyboard open while the captain searches: keep the search in view */
+  #g-round.kb .clues,#g-round.kb .hint,#g-round.kb .log,#g-round.kb .final{display:none}
+  .flash.mid{background:color-mix(in srgb,var(--surface2) 96%,transparent)}
+  .flash.mid b{color:var(--text)} .flash.mid span{color:var(--muted)}
+  .vs em s{text-decoration:none;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app" id="game">
+  <!-- THE ROUND -->
+  <section class="gs" id="g-round">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="l-mid"><b class="rno"></b><small id="teamTag"></small></div>
+      <div class="clock" id="clock"></div>
+    </div>
+    <div class="tokbar" id="tokbar"></div>
+    <div class="clues" id="clues"></div>
+    <button class="hint" type="button" id="hintBtn"><b></b><small></small><span class="ready"></span></button>
+    <div class="log" id="log"></div>
+    <div class="gap"></div>
+    <div class="final" id="finalTag" hidden><b>FINAL GUESS</b><small>Right +1 · wrong −1</small></div>
+    <div id="capBox" hidden>
+      <div class="capline"><i></i>Pick the movie, your team votes</div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" placeholder="Type a movie…" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"></div>
+      <div class="sugg" id="sugg"></div>
+      <button class="btn go" type="button" id="propBtn" disabled>PROPOSE</button>
+    </div>
+    <div id="act"></div>
+  </section>
+
+  <!-- REVEAL -->
+  <section class="gs" id="g-rev">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="l-mid"><b class="rno"></b><small id="revSub" style="color:var(--muted)"></small></div>
+      <span style="width:40px"></span>
+    </div>
+    <div class="movie"><small>THE MOVIE WAS</small><h1 id="revMovie"></h1><p id="revInfo"></p></div>
+    <div class="vs" id="revVs"></div>
+    <div class="gap"></div>
+    <div class="bottom" id="revBottom"></div>
+  </section>
+
+  <!-- GAME OVER -->
+  <section class="gs" id="g-end">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="l-mid"><b>GAME OVER</b><small id="endSub" style="color:var(--muted)"></small></div>
+      <span style="width:40px"></span>
+    </div>
+    <div class="champ" id="champ"></div>
+    <div class="vs" id="endVs"></div>
+    <div class="hist" id="hist"></div>
+    <div class="bottom" id="endBottom"></div>
+  </section>
+</div>
+
+<div class="scrim" id="gScrim"></div>
+<section class="sheet" id="leaveSheet" aria-label="Leave"><div class="grab"></div><h3>LEAVE THE GAME?</h3>
+  <p>Your team keeps playing without you. You can join again between rounds with the room code.</p>
+  <div class="two"><button class="btn outline" type="button" data-stay>STAY</button><button class="btn" type="button" id="leaveYes">LEAVE</button></div></section>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
+<script src="data/cluepool-names.js"></script>
+<script src="core/core.js?v=0.2.1"></script>
+<script src="core/howto.js?v=0.2.0"></script>
+<script src="core/core-ui.js?v=0.2.3"></script>
+<script>
+(() => {
+  'use strict';
+  const C = Cinefied, UI = CinefiedUI, esc = C.esc;
+  const $ = id => document.getElementById(id);
+  const game = $('game');
+  const NAMES = window.CluePoolNames;
+  const TOKENS = 7, ROUND_MS = 120000;   // same as functions/cluepool.js
+
+  let V = null, shown = null, skew = 0, pick = null, lastDeal = null, lastLog = 0, lastHints = 0, lastPhase = null, onlineSig = '';
+  const busy = new Set(), asked = new Set(), flashed = new Set();
+  const now = () => Date.now() + skew;
+
+  function fitViewport() {
+    const h = window.visualViewport ? window.visualViewport.height : innerHeight;
+    document.documentElement.style.setProperty('--app-h', Math.round(h) + 'px');
+    if (window.visualViewport) scrollTo(0, 0);
+  }
+  if (window.visualViewport) visualViewport.addEventListener('resize', fitViewport);
+  addEventListener('resize', fitViewport);
+
+  // ── helpers over the room ──
+  const st = () => (V && V.room.state) || {};
+  const ph = () => (V ? V.room.phase : null);
+  const P = u => V.room.players[u];
+  const nameOf = u => (P(u) && P(u).name) || (st().names || {})[u] || 'Player';
+  const isMe = u => V && u === V.me;
+  const colorOf = u => (isMe(u) ? 'linear-gradient(135deg,var(--accent),var(--accent2))' : UI.avColor(u));
+  const av = (u, cls) => `<span class="pfp${cls ? ' ' + cls : ''}" style="--pc:${colorOf(u)}">${UI.initial(nameOf(u))}</span>`;
+  const myTeam = () => (st().team || {})[V.me] || null;
+  const other = t => (t === 'A' ? 'B' : 'A');
+  const card = () => (V.private && V.private[st().deal]) || null;
+  const onlineOf = t => Object.keys(st().team || {}).filter(u => st().team[u] === t && P(u) && P(u).online !== false);
+  const captainOf = t => String(st().ord || '').split(',').find(u => (st().team || {})[u] === t && P(u) && P(u).online !== false) || null;
+  const kOf = t => (t === 'A' ? 'var(--ta)' : 'var(--tb)');
+  function setHTML(el, html) { if (el.dataset.h !== html) { el.dataset.h = html; el.innerHTML = html; } }
+  function show(id) {
+    if (shown === id) return;
+    shown = id;
+    document.querySelectorAll('#game .gs').forEach(s => { s.classList.toggle('on', s.id === id); s.classList.toggle('in', s.id === id); });
+  }
+  const MSG = { not_captain: 'Only the captain proposes', bad_movie: 'Pick a movie from the list', tried: 'Your team already tried that one', no_hint: 'No hint available', teams: 'Each team needs at least one player' };
+  async function ask(action, extra) {
+    const key = action + (extra && extra.uid ? extra.uid : '');
+    if (busy.has(key)) return {};
+    busy.add(key);
+    const r = await C.referee(action, extra);
+    busy.delete(key);
+    if (!r.ok && MSG[r.error]) UI.say(MSG[r.error]);
+    else if (!r.ok && !['phase', 'noop', 'abort', 'stale'].includes(r.error)) UI.say(C.message({ code: r.error }));
+    return r;
+  }
+  function flash(kind, big, small) {
+    const s = document.querySelector('#game .gs.on'); if (!s) return;
+    const d = document.createElement('div'); d.className = 'flash ' + kind; d.innerHTML = `<b>${esc(big)}</b><span>${esc(small || '')}</span>`;
+    s.appendChild(d); setTimeout(() => d.remove(), 1700);
+  }
+
+  // ══ waiting room: two team columns ═══════════════════════════
+  function drawTeams(v, els) {
+    const ps = v.players, me = ps.find(p => p.uid === v.me);
+    const count = t => ps.filter(p => p.team === t).length;
+    // new here: sit on the smaller team
+    if (me && me.team !== 'A' && me.team !== 'B' && !busy.has('sit')) {
+      busy.add('sit');
+      C.updateMe({ team: count('A') <= count('B') ? 'A' : 'B', tj: Date.now() }).catch(() => {}).finally(() => busy.delete('sit'));
+    }
+    const col = t => {
+      const m = ps.filter(p => p.team === t).sort((a, b) => (a.tj || a.joinedAt || 0) - (b.tj || b.joinedAt || 0));
+      const cap = m.find(p => p.online !== false);
+      return `<div class="wcol" style="--k:${kOf(t)}"><h4>TEAM ${t} <small>${m.length}</small></h4>${m.map(p => `<div class="wp${p.online === false ? ' off' : ''}">
+        <span class="pfp" style="--pc:${p.uid === v.me ? 'linear-gradient(135deg,var(--accent),var(--accent2))' : UI.avColor(p.uid)}">${UI.initial(p.name)}</span><span data-uid="${C.sid(p.uid)}">${p.uid === v.me ? 'You' : esc(p.name)}${cap && cap.uid === p.uid ? '<small>CAPTAIN</small>' : p.online === false ? '<small style="color:var(--muted)">OFFLINE</small>' : ''}</span>
+        ${v.isLeader ? `<button type="button" data-move="${C.sid(p.uid)}" data-to="${other(t)}" aria-label="Move to Team ${other(t)}">⇄</button>` : ''}</div>`).join('')}
+        <button class="wjoin" type="button" data-join="${t}"${me && me.team === t ? ' hidden' : ''}>JOIN TEAM ${t}</button></div>`;
+    };
+    els.seats.classList.add('cp'); document.getElementById('s-wait').classList.add('cpw');
+    // the core has just drawn its own seats here, so always write the team columns over them
+    els.seats.dataset.h = '';
+    setHTML(els.seats, `<div class="wteams">${col('A')}${col('B')}</div>${v.isLeader ? '<button class="btn outline bal" type="button" data-balance>AUTO-BALANCE</button>' : ''}`);
+    const on = t => ps.filter(p => p.team === t && p.online !== false).length;
+    const ready = on('A') >= 1 && on('B') >= 1;
+    els.status.innerHTML = ready ? `<b>${ps.length}</b> players · ${count('A')} vs ${count('B')}` : 'Each team needs at least one player';
+    if (els.go) els.go.disabled = els.go.disabled || !ready;
+  }
+
+  // ══ the round ════════════════════════════════════════════════
+  const dots = n => `<div class="dots">${Array.from({ length: TOKENS }, (_, i) => `<i class="${i < n ? 'f' : ''}"></i>`).join('')}</div>`;
+  const LOCK = '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+  function drawRound() {
+    const s = st(), t = myTeam() || 'A', o = other(t), T = (s.teams || {})[t] || {}, O = (s.teams || {})[o] || {}, c = card(), spectator = !myTeam();
+    const sc = $('g-round'); sc.classList.toggle('teamB', t === 'B');
+    document.querySelectorAll('#game .rno').forEach(e => { e.textContent = s.tb ? 'TIE-BREAK ROUND' : `ROUND ${s.round || 1} OF ${s.total || 3}`; });
+    const cap = captainOf(t), iCap = cap === V.me && !spectator;
+    $('teamTag').textContent = spectator ? 'WATCHING' : `TEAM ${t}${iCap ? " · YOU'RE CAPTAIN" : ''}`;
+    setHTML($('tokbar'), `<div class="tok me" style="--k:${kOf(t)}"><div class="nm">${spectator ? 'Team ' + t : 'Your team'} <b>${T.tokens ?? TOKENS}</b></div>${dots(T.tokens ?? TOKENS)}</div>
+      <div class="tok them" style="--k:${kOf(o)}"><div class="nm">Team ${o} <b>${O.tokens ?? TOKENS}</b></div>${dots(O.tokens ?? TOKENS)}</div>`);
+    // clues: the free actor, then the ones this team opened
+    const hints = (c && c.hints) || [], labels = ['Genre', 'Released', 'Story'];
+    const fresh = s.deal === lastDeal && hints.length > lastHints ? hints.length - 1 : -1;
+    setHTML($('clues'), spectator ? '' : `<div class="cl open"><small>Actor</small><span>${esc(c ? c.actor : '…')}</span><em class="free">FREE</em></div>` +
+      labels.map((k, i) => (i < hints.length ? `<div class="cl open${i === fresh ? ' new' : ''}"><small>${k}</small><span>${esc(hints[i])}</span></div>` : `<div class="cl shut"><small>${k}</small><span>Locked</span>${LOCK}</div>`)).join(''));
+    // the hint button
+    const on = onlineOf(t), hv = T.hv || {}, ready = on.filter(u => hv[u]).length, mine = !!hv[V.me];
+    const canHint = T.status === 'playing' && (T.hs || 0) < 3 && (T.tokens || 0) >= 2;
+    const hb = $('hintBtn'); hb.hidden = spectator; hb.disabled = !canHint; hb.className = 'hint' + (mine && canHint ? ' mine' : '');
+    hb.querySelector('b').textContent = canHint ? (mine ? 'HINT · READY' : 'HINT') : (T.tokens || 0) <= 0 ? 'NO TOKENS LEFT' : (T.hs || 0) >= 3 ? 'NO MORE HINTS' : T.status === 'playing' ? 'KEEP 1 TOKEN TO GUESS' : 'HINTS CLOSED';
+    hb.querySelector('small').textContent = canHint ? (mine ? `${ready} of ${on.length}` : `−1 token${on.length > 1 ? ` · ${ready} of ${on.length} ready` : ''}`) : '';
+    setHTML(hb.querySelector('.ready'), canHint && on.length > 1 ? on.slice(0, 5).map(u => av(u, hv[u] ? 'ok' : '')).join('') : '');
+    // wrong guesses so far
+    const log = (c && c.log) || [];
+    setHTML($('log'), log.length ? '<small>WRONG</small>' + log.filter(l => !l.ok).map(l => `<span>${esc(l.m)}</span>`).join('') : '');
+    if (s.deal === lastDeal && log.length > lastLog) { const l = log[log.length - 1]; if (!l.ok) flash('no', 'WRONG', `Not ${l.m} · ${T.status === 'done' ? "you're out" : '−1 token'}`); }
+    lastDeal = s.deal; lastLog = log.length; lastHints = hints.length;
+    // the bottom: proposal / captain's search / waiting
+    const live = T.status === 'playing' || T.status === 'final', pr = c && c.prop;
+    $('finalTag').hidden = spectator || T.status !== 'final';
+    const showCap = iCap && live && !pr;
+    if ($('capBox').hidden === showCap) { $('capBox').hidden = !showCap; if (!showCap) { $('q').blur(); } }
+    let html = '';
+    if (spectator) html = `<p class="note">You're in. You join a team from the next round.</p>`;
+    else if (T.status === 'done') html = `<p class="note">Your team is out of guesses. Waiting for the round to end.</p>`;
+    else if (T.status === 'correct') html = `<p class="note"><b>Your team got it!</b></p>`;
+    else if (pr) {
+      const v = pr.votes || {}, yes = on.filter(u => v[u] === 'yes').length, need = Math.floor(on.length / 2) + 1;
+      html = `<div class="prop"><small>${pr.by === V.me ? 'You propose' : 'Captain ' + esc(nameOf(pr.by)) + ' proposes'}</small><h3>${esc(pr.movie.toUpperCase())}</h3>
+        <p class="votes"><b>${yes}</b> of ${on.length} agree · needs ${need}</p>` +
+        (pr.by === V.me ? '<button class="btn outline" type="button" data-act="withdraw">WITHDRAW</button>'
+          : v[V.me] ? `<p class="mine">You said ${v[V.me] === 'yes' ? 'AGREE' : 'NO'}</p>`
+          : '<div class="two"><button class="btn go" type="button" data-vote="yes">AGREE</button><button class="btn outline" type="button" data-vote="no">NO</button></div>') + '</div>';
+    } else if (!iCap) html = `<p class="note">Talk it over with your team.<br>Captain <b>${esc(cap ? nameOf(cap) : '…')}</b> makes the guess.</p>`;
+    setHTML($('act'), html);
+  }
+  function suggest() {
+    const q = $('q').value.trim().toLowerCase(), tried = new Set((((card() || {}).log) || []).map(l => l.m));
+    const hit = q ? NAMES.filter(n => n.toLowerCase().includes(q) && !tried.has(n)).sort((a, b) => a.toLowerCase().indexOf(q) - b.toLowerCase().indexOf(q)).slice(0, innerHeight < 700 ? 2 : 3) : [];
+    if (pick && !hit.includes(pick)) pick = null;
+    if (hit.length === 1) pick = hit[0];
+    $('sugg').innerHTML = hit.map(n => { const i = n.toLowerCase().indexOf(q); return `<button type="button" class="${n === pick ? 'sel' : ''}" data-name="${esc(n)}">${esc(n.slice(0, i))}<b>${esc(n.slice(i, i + q.length))}</b>${esc(n.slice(i + q.length))}</button>`; }).join('');
+    const b = $('propBtn'); b.disabled = !pick; b.textContent = pick ? 'PROPOSE ' + pick.toUpperCase() : 'PROPOSE';
+  }
+  $('q').addEventListener('input', () => { pick = null; suggest(); });
+  // keyboard open: hide the clues so the search stays in view
+  let fullH = window.visualViewport ? visualViewport.height : innerHeight;
+  function kbCheck() {
+    const h = window.visualViewport ? visualViewport.height : innerHeight;
+    if (document.activeElement !== $('q')) fullH = Math.max(fullH, h);
+    $('g-round').classList.toggle('kb', document.activeElement === $('q') && h < fullH * 0.82);
+  }
+  if (window.visualViewport) visualViewport.addEventListener('resize', kbCheck);
+  addEventListener('resize', kbCheck);
+  $('q').addEventListener('focus', () => { kbCheck(); setTimeout(kbCheck, 350); });
+  $('q').addEventListener('blur', () => setTimeout(kbCheck, 50));
+  ['propBtn', 'sugg'].forEach(id => $(id).addEventListener('pointerdown', e => { if (document.activeElement === $('q')) e.preventDefault(); }));
+
+  // ── timer: the server decides; phones say "time's up" and "someone went offline" ──
+  function tickTimers() {
+    if (!V || ph() !== 'round' || !st().deadline) return;
+    const s = st(), left = Math.max(0, s.deadline - now()), secs = Math.ceil(Math.min(left, ROUND_MS) / 1000);
+    const c = $('clock');
+    if (!c.firstChild) c.innerHTML = '<svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="18"/><circle class="fg" cx="20" cy="20" r="18"/></svg><span></span>';
+    c.querySelector('.fg').style.strokeDashoffset = 113 * (1 - Math.min(left, ROUND_MS) / ROUND_MS);
+    c.querySelector('span').textContent = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
+    c.querySelector('span').style.color = secs <= 10 ? 'var(--accent)' : '';
+    const late = now() - s.deadline, once = (k, fn) => { const tag = s.deal + k; if (!asked.has(tag)) { asked.add(tag); fn(); } };
+    if (late >= 0) once('t1', () => ask('tick'));
+    if (late > 1500) once('t2', () => ask('tick'));
+    if (late > 4000) once('t3', () => ask('tick'));
+  }
+  setInterval(tickTimers, 250);
+
+  // ══ reveal + game over ═══════════════════════════════════════
+  const logLine = l => (l || []).map(x => `${x.ok ? '✓' : '<s>✗</s>'} ${esc(x.m)}`).join('<br>');
+  function drawReveal() {
+    const s = st(), r = s.result || {}, tot = s.totals || { A: 0, B: 0 };
+    document.querySelectorAll('#game .rno').forEach(e => { e.textContent = s.tb ? 'TIE-BREAK ROUND' : `ROUND ${s.round || 1} OF ${s.total || 3}`; });
+    const left = r.left || 0;
+    $('revSub').textContent = r.winner ? `Team ${r.winner} got it with ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} left` : 'Nobody got it';
+    $('revMovie').textContent = (r.movie || '').toUpperCase(); $('revInfo').textContent = `${r.actor || ''} · ${r.year || ''}`;
+    const box = t => `<div class="${r.winner === t ? 'win' : ''}" style="--k:${kOf(t)}"><small>TEAM ${t}${myTeam() === t ? ' · YOU' : ''}</small><b>${r[t] > 0 ? '+' + r[t] : r[t] < 0 ? '−' + Math.abs(r[t]) : '0'}</b><span>Total ${tot[t] || 0}</span><em>${logLine(r['log' + t]) || '<s>No guesses</s>'}</em></div>`;
+    setHTML($('revVs'), box('A') + box('B'));
+    const L = P(V.room.leader), last = (s.round || 0) >= (s.total || 0), tied = (tot.A || 0) === (tot.B || 0);
+    const label = !last ? 'NEXT ROUND' : tied && !s.tb ? 'TIE-BREAK ROUND' : 'FINAL RESULTS';
+    setHTML($('revBottom'), V.isLeader ? `<button class="btn greenbtn" type="button" data-act="next">${label}</button>` : `<p class="gwait note">Waiting for ${esc(L ? L.name : 'the leader')}</p>`);
+    // a quick flash when the round ends in front of you
+    if (lastPhase === 'round' && !flashed.has(s.deal)) {
+      flashed.add(s.deal);
+      setTimeout(() => { const mine = myTeam(); if (r.winner && r.winner === mine) flash('yes', 'GOT IT!', `+${r[mine]} points for Team ${mine}`); else if (r.winner) flash('mid', `TEAM ${r.winner} GOT IT`, r.movie); else flash('mid', "TIME'S UP", r.movie); }, 60);
+    }
+  }
+  function drawEnd() {
+    const s = st(), tot = s.totals || { A: 0, B: 0 }, A = tot.A || 0, B = tot.B || 0, w = A === B ? null : A > B ? 'A' : 'B';
+    $('endSub').textContent = s.short === 'few' ? 'Not enough players to keep going' : s.short === 'ended' ? 'The leader ended the game' : `${(s.history || []).length} rounds`;
+    setHTML($('champ'), `<small>${w ? 'WINNERS' : 'ALL SQUARE'}</small><h1 style="color:${w ? kOf(w) : 'var(--text)'}">${w ? 'TEAM ' + w : "IT'S A DRAW"}</h1>`);
+    const names = t => Object.keys(s.team || {}).filter(u => s.team[u] === t).map(u => esc(isMe(u) ? 'You' : nameOf(u))).join(' · ');
+    setHTML($('endVs'), ['A', 'B'].map(t => `<div class="${w === t ? 'win' : ''}" style="--k:${kOf(t)}"><small>TEAM ${t}</small><b>${tot[t] || 0}</b><span>${names(t)}</span></div>`).join(''));
+    const cell = (n, k) => `<b class="${k}">${n > 0 ? '+' + n : n < 0 ? '−' + Math.abs(n) : '–'}</b>`;
+    setHTML($('hist'), (s.history || []).slice(-8).map((h, i, a) => `<div class="hrow"><i>R${(s.history.length - a.length) + i + 1}</i><span>${esc(h.m)}</span>${cell(h.A, 'a')}${cell(h.B, 'b')}</div>`).join(''));
+    const L = P(V.room.leader);
+    setHTML($('endBottom'), V.isLeader ? '<button class="btn greenbtn" type="button" data-act="again">PLAY AGAIN</button><button class="btn outline" type="button" data-act="lobby">WAITING ROOM</button>'
+      : `<p class="gwait note">Waiting for ${esc(L ? L.name : 'the leader')} to choose</p>`);
+  }
+
+  function render() {
+    if (!V || !V.room.state) return;
+    const p = ph();
+    if (p === 'round') {
+      if (st().deal !== lastDeal) { pick = null; $('q').value = ''; $('sugg').innerHTML = ''; $('propBtn').disabled = true; $('propBtn').textContent = 'PROPOSE'; lastLog = 0; lastHints = 0; }
+      drawRound(); show('g-round');
+      // someone on a team went offline or came back: votes and the captain may change
+      const sig = Object.keys(st().team || {}).map(u => (P(u) && P(u).online !== false ? 1 : 0)).join('');
+      if (sig !== onlineSig) { if (onlineSig) ask('tick'); onlineSig = sig; }
+    } else if (p === 'reveal') { drawReveal(); show('g-rev'); onlineSig = ''; }
+    else if (p === 'final') { drawEnd(); show('g-end'); onlineSig = ''; }
+    lastPhase = p;
+    tickTimers();
+  }
+
+  // ══ touches ══════════════════════════════════════════════════
+  const closeLeave = () => { $('leaveSheet').classList.remove('open'); $('gScrim').classList.remove('open'); };
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#gScrim') || t.closest('[data-stay]')) return closeLeave();
+    if (t.closest('#leaveYes')) { closeLeave(); return void UI.leaveGame(); }
+    // waiting room teams
+    const j = t.closest('[data-join]'); if (j) return void C.updateMe({ team: j.dataset.join, tj: Date.now() }).catch(() => UI.say("Couldn't switch teams"));
+    const mv = t.closest('[data-move]'); if (mv && V0) { const p = V0.players.find(x => C.sid(x.uid) === mv.dataset.move); if (p) ask('move', { uid: p.uid, team: mv.dataset.to }); return; }
+    if (t.closest('[data-balance]')) return void ask('balance');
+    if (!t.closest('#game') || !V) return;
+    if (t.closest('[data-leave]')) { $('leaveSheet').classList.add('open'); $('gScrim').classList.add('open'); return; }
+    if (t.closest('#hintBtn') && ph() === 'round') return void ask('hint');
+    const n = t.closest('[data-name]'); if (n) { pick = n.dataset.name; return suggest(); }
+    if (t.closest('#propBtn') && pick && ph() === 'round') { const movie = pick; return void ask('propose', { movie }).then(r => { if (r.ok) { pick = null; $('q').value = ''; $('q').blur(); suggest(); } }); }
+    const v = t.closest('[data-vote]'); if (v) return void ask('vote', { v: v.dataset.vote });
+    const a = t.closest('[data-act]'); if (a) return void ask(a.dataset.act);
+  });
+
+  // ══ hand-off with the core ═══════════════════════════════════
+  let V0 = null;   // the room as last seen in the waiting room
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = {
+    steps: [
+      { d: 3600, t: 'Both teams get the same hidden movie and 7 tokens. The actor clue is free.' },
+      { d: 3800, t: 'More hints cost 1 token each. A hint opens when everyone on your team taps HINT.' },
+      { d: 5200, t: 'The captain proposes a movie and the team votes. More than half locks it in. A wrong guess costs 1 token.' },
+      { d: 3600, t: 'The first team to get it scores its leftover tokens. At 0 tokens you get one final guess: +1 if right, −1 if wrong.' }
+    ],
+    build(svg, K) {
+      const { el, op, cl, pr, ease, back, lerp, fitLines, Phone, Player, Chip, Label, WidePill, Ripple, COLORS } = K;
+      // one column per team: a colour bar, players, tokens, then one message slot
+      const COL = [70, 250], TC = ['var(--accent)', 'var(--blue)'];
+      const card = el('g', {}, svg);
+      el('rect', { x: 104, y: 20, width: 112, height: 50, rx: 12, fill: 'var(--surface)', stroke: 'var(--border)', 'stroke-width': 1.5 }, card);
+      const q = Label(svg), ans = Label(svg), clue = Chip(svg);
+      const bars = COL.map((x, t) => el('rect', { x: x - 44, y: 112, width: 88, height: 3, rx: 1.5, fill: TC[t], opacity: 0 }, svg));
+      const pl = el('g', {}, svg);
+      const P = [[COL[0] - 18, 0], [COL[0] + 18, 1], [COL[1] - 18, 2], [COL[1] + 18, 3]].map(([x, i]) => Player(pl, x, 142, 'RSBA'[i], COLORS[i]));
+      const crown = [0, 2].map(i => el('path', { d: 'M-7 3L-7 -4L-3.5 0L0 -6L3.5 0L7 -4L7 3Z', fill: 'var(--yellow)', opacity: 0, transform: `translate(${P[i].x} 121)` }, svg));
+      const tok = COL.map(x => Array.from({ length: 7 }, (_, i) => el('circle', { cx: x - 33 + 11 * i, cy: 176, r: 4.2, fill: 'var(--yellow)', opacity: 0 }, svg)));
+      const slot = [Chip(svg), Chip(svg)], big = Label(svg), taps = [Ripple(svg), Ripple(svg)];
+      const pop = (u, a) => back(pr(u, a, 260));
+      const tokens = (t, n) => tok[t].forEach((c, i) => { op(c, i < n ? 1 : .15); c.setAttribute('r', 4.2); });
+      const spend = (t, i, u, a) => { const k = pr(u, a, 350); op(tok[t][i], 1 - .85 * k); tok[t][i].setAttribute('r', (4.2 * (1 + .6 * Math.sin(Math.PI * k))).toFixed(2)); };
+      return (s, u) => {
+        [clue, ...slot].forEach(c => c.hide()); [q, ans, big].forEach(l => l.hide()); taps.forEach(t => t.set(0, 0, 0));
+        P.forEach(p => p.set()); bars.forEach(b => op(b, 1)); crown.forEach(c => op(c, s === 2 ? 1 : 0)); op(card, 1);
+        q.set('? ? ?', 160, 45, 22, 'var(--muted)');
+        if (s > 0) clue.set('Actor: Mahesh Babu', 160, 86, 1);
+        if (s === 0) {
+          const k = pr(u, 0, 400); op(card, k); q.set('? ? ?', 160, 45, 22, 'var(--muted)', { o: k });
+          P.forEach((p, i) => p.set({ o: pr(u, 300 + i * 100, 300) })); bars.forEach(b => op(b, pr(u, 300, 300)));
+          tok.forEach(row => row.forEach((c, i) => { op(c, pr(u, 900 + i * 80, 200)); c.setAttribute('r', 4.2); }));
+          if (u > 1900) clue.set('Actor: Mahesh Babu', 160, 86, pop(u, 1900));
+        } else if (s === 1) {
+          tokens(0, 7); tokens(1, 7); spend(0, 6, u, 1500);
+          [0, 1].forEach(i => { const a = 400 + i * 550; taps[i].set(P[i].x, 142, pr(u, a, 500), 22); if (u > a) P[i].set({ ring: 1, ringC: 'var(--green)' }); });
+          if (u > 1700) slot[0].set('Genre: Action', COL[0], 204, pop(u, 1700));
+        } else if (s === 2) {
+          tokens(0, 6); tokens(1, 7); spend(0, 5, u, 1700);
+          if (u < 1400) { slot[0].set('Athadu?', COL[0], 204, pop(u, 300)); P[0].set({ ring: 1 }); if (u > 800) P[1].set({ ring: 1, ringC: 'var(--green)' }); }
+          else slot[0].set('Wrong', COL[0], 204, pop(u, 1400), 'acc');
+          if (u > 2600) {
+            const right = u > 3800;
+            slot[1].set('Pokiri?', COL[1], 204, pop(u, 2600), right ? 'ok' : undefined);
+            P[2].set({ ring: 1, ringC: right ? 'var(--green)' : 'var(--text)' }); if (u > 3100) P[3].set({ ring: 1, ringC: 'var(--green)' });
+            if (right) { q.hide(); ans.set('POKIRI', 160, 45, 22, 'var(--green)', { s: pop(u, 3800) }); }
+          }
+        } else {
+          tokens(0, 5); tokens(1, 7); q.hide(); ans.set('POKIRI', 160, 45, 22, 'var(--green)');
+          tok[1].forEach((c, i) => c.setAttribute('r', (4.2 * (1 + .4 * Math.sin(Math.PI * pr(u, 200 + i * 80, 300)))).toFixed(2)));
+          if (u > 900) big.set('+7', COL[1], 210, 28, 'var(--green)', { s: pop(u, 900) });
+        }
+      };
+    }
+  };
+
+  UI.mount({
+    game: {
+      howto: HOWTO,
+      id: 'cluepool', name: 'Clue Pool', shelf: 'Play together', color: 'var(--green)', glyph: 'C', referee: true,
+      pitch: 'Two teams, one hidden movie. Buy hints with tokens, and guess before the other team does.',
+      facts: ['2 to 10 players', 'Team vs team', '~10 min'],
+      rules: ['Both teams get the same hidden movie and 7 tokens. The actor clue is free.',
+              'Three more hints (genre, year, story) cost 1 token each. A hint opens when everyone on your team taps HINT.',
+              'The captain proposes a movie and the team votes. More than half locks it in. A wrong guess costs 1 token.',
+              'The first team to get it scores its leftover tokens. At 0 tokens you get one final guess: +1 if right, −1 if wrong.'],
+      min: 2, max: 10,
+      settings: [{ key: 'rounds', label: 'Rounds', options: [3, 5, 7], default: 3, summary: v => `${v} rounds · 2 min each` }],
+      wait: (v, els) => { V0 = v; drawTeams(v, els); },
+    },
+    gameNames: { pictionary: 'Pictionary', imposter: 'Imposter', tictactoe: 'Tic Tac Toe', tierd: "Tier'd", likely: "Who's More Likely", wavelength: 'Wavelength', blindspot: 'Blindspot', cluepool: 'Clue Pool' },
+    onStart: v => { V = v; shown = null; lastPhase = null; onlineSig = ''; game.classList.add('on'); fitViewport(); render(); },
+    onUpdate: v => { V = v; render(); },
+    onLobby: () => { V = null; shown = null; closeLeave(); game.classList.remove('on'); },
+  });
+  firebase.database().ref('.info/serverTimeOffset').on('value', s => { skew = Number(s.val()) || 0; });
+})();
+</script>
+</body>
+</html>

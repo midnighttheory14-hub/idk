@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Tic Tac Toe · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  /* Tic Tac Toe game screens. Entry page and waiting room come from the core.
+     Every screen fits the phone: sizes follow the screen height, nothing scrolls. */
+  :root{--x:var(--accent);--o:var(--blue)}
+  #game{display:none}
+  #game.on{display:block}
+  body.solo #cf-app{display:none}
+  #game .gs{display:none;height:100vh;height:100dvh;overflow:hidden;flex-direction:column;
+            padding:calc(12px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px))}
+  #game .gs.on{display:flex}
+  #game .gs.in{animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  /* ── game ── */
+  .t-mid{display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1}
+  .t-mid b{font-family:var(--display);font-weight:400;font-size:20px;letter-spacing:2.5px}
+  .t-mid small{font-size:9.5px;letter-spacing:2px;color:var(--muted)}
+  .t-mode{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:6px 11px;background:var(--surface);white-space:nowrap}
+
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:clamp(8px,2dvh,18px);flex:none}
+  .pc{position:relative;border:1.5px solid var(--border);background:var(--surface);border-radius:18px;padding:clamp(8px,1.4dvh,12px) 12px;
+      display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:10px;row-gap:clamp(4px,.8dvh,7px);align-items:center;
+      box-shadow:var(--lift);transition:border-color .25s,background .25s,opacity .25s;min-width:0}
+  .pc .mk{grid-row:1/3;width:clamp(36px,6dvh,46px);height:clamp(36px,6dvh,46px)}
+  .pc .nm{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .pc .nm small{font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-left:6px}
+  .pc .meta{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
+  .wins{display:flex;gap:4px;align-items:center}
+  .wins i{width:9px;height:9px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--border)}
+  .wins i.on{box-shadow:none;background:var(--pcol)}
+  .wins b{font-family:var(--display);font-weight:400;font-size:20px;line-height:1;color:var(--pcol)}
+  .pcs{display:flex;gap:3px}
+  .pcs i{width:6px;height:6px;border-radius:2px;background:var(--pcol);opacity:.18}
+  .pcs i.on{opacity:1} .pcs i.old{opacity:.45}
+  .pc.x{--pcol:var(--x)} .pc.o{--pcol:var(--o)}
+  .pc.turn{border-color:var(--pcol);background:color-mix(in srgb,var(--pcol) 9%,var(--surface))}
+  .pc.turn::after{content:"TO MOVE";position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:8.5px;letter-spacing:1.5px;
+      background:var(--pcol);color:#fff;border-radius:999px;padding:2px 8px}
+  .pc.off{opacity:.55}
+  .pc.off .nm::after{content:"offline";margin-left:6px;font-size:9px;color:var(--accent)}
+
+  .arena{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:clamp(8px,2dvh,18px) 0 clamp(4px,1dvh,10px)}
+  .grid{position:relative;width:min(100%,46dvh,380px);aspect-ratio:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:clamp(6px,1.2dvh,10px)}
+  .cell{border:0;border-radius:clamp(12px,2dvh,18px);background:var(--surface);box-shadow:inset 0 0 0 1px var(--border),var(--lift);cursor:pointer;
+        position:relative;min-height:0;min-width:0;padding:0;transition:transform .12s,background .2s,opacity .3s}
+  .cell .mk{position:absolute;inset:20%;width:auto;height:auto}
+  .cell:active{transform:scale(.95)}
+  .cell.can:hover{background:var(--surface2)}
+  .cell.lock{cursor:default}
+  .cell.ghost svg{opacity:.28}
+  .cell.ghost::after{content:"";position:absolute;inset:6px;border-radius:inherit;border:1.5px dashed color-mix(in srgb,var(--gc) 60%,transparent);animation:breathe 1.6s ease-in-out infinite}
+  @keyframes breathe{50%{opacity:.35}}
+  .cell.win{background:color-mix(in srgb,var(--wc) 16%,var(--surface));box-shadow:inset 0 0 0 1.5px var(--wc)}
+  .grid.done .cell:not(.win){opacity:.35}
+  .mk{display:block;width:100%;height:100%;overflow:visible}
+  .mk path,.mk circle{fill:none;stroke-width:13;stroke-linecap:round}
+  .mk.x path{stroke:var(--x)} .mk.o circle{stroke:var(--o)}
+  .mk.draw path{stroke-dasharray:80;stroke-dashoffset:80;animation:ink .32s cubic-bezier(.3,.7,.3,1) forwards}
+  .mk.draw circle{stroke-dasharray:180;stroke-dashoffset:180;animation:ink .38s cubic-bezier(.3,.7,.3,1) forwards}
+  .mk.draw path+path{animation-delay:.12s}
+  @keyframes ink{to{stroke-dashoffset:0}}
+  .gone{animation:vanish .35s ease forwards}
+  @keyframes vanish{to{opacity:0;transform:scale(.6)}}
+  .wline{position:absolute;inset:0;pointer-events:none;overflow:visible}
+  .wline line{stroke:var(--wc);stroke-width:9;stroke-linecap:round;stroke-dasharray:400;stroke-dashoffset:400;animation:ink .45s .1s cubic-bezier(.3,.7,.3,1) forwards;opacity:.9}
+
+  .t-status{text-align:center;min-height:clamp(42px,7dvh,58px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex:none}
+  .t-status p{font-size:12.5px;color:var(--muted)}
+  .t-status p b{color:var(--text);font-weight:500}
+  .t-status h2{font-family:var(--display);font-weight:400;font-size:clamp(26px,4.4dvh,36px);letter-spacing:2.5px;line-height:1;color:var(--wc);animation:pop .4s cubic-bezier(.2,1.5,.4,1)}
+  @keyframes pop{from{transform:scale(.7);opacity:0}}
+  .think::after{content:"";animation:dots 1.4s steps(4) infinite}
+  .offpill{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);
+           background:color-mix(in srgb,var(--accent) 8%,var(--surface));border-radius:999px;padding:7px 14px;font-size:12px}
+  .offpill i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:breathe 1.2s infinite}
+  .rule{align-self:center;font-size:10.5px;color:var(--muted);border:1px dashed var(--border);border-radius:999px;padding:6px 12px;flex:none;
+        display:flex;align-items:center;gap:7px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rule .gh{width:13px;height:13px;border-radius:4px;border:1.5px dashed var(--muted);flex:none}
+  .t-bottom{flex:none;min-height:clamp(50px,8dvh,60px);margin-top:clamp(8px,1.6dvh,14px);display:grid;align-items:end}
+
+  /* ── match over ── */
+  .ov{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(6px,1.6dvh,14px)}
+  .ov small{font-size:10.5px;letter-spacing:4px;color:var(--muted)}
+  .ov .big{width:clamp(80px,17dvh,150px);height:clamp(80px,17dvh,150px);padding:8%;border-radius:28px;background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--wc),0 0 50px color-mix(in srgb,var(--wc) 30%,transparent)}
+  .ov h1{font-family:var(--display);font-weight:400;font-size:clamp(40px,8dvh,68px);letter-spacing:4px;line-height:.9;color:var(--wc)}
+  .ov h1.lose{color:var(--muted)}
+  .score{display:flex;align-items:center;gap:14px;font-family:var(--display);font-size:clamp(34px,6dvh,52px);letter-spacing:2px;line-height:1}
+  .score .sx{color:var(--x)} .score .so{color:var(--o)} .score em{font-style:normal;color:var(--muted);font-size:.6em}
+  .ov p{font-size:12px;color:var(--muted);line-height:1.6;max-width:30ch}
+  .ov-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;width:100%;margin-top:clamp(2px,1dvh,8px)}
+  .st{border:1px solid var(--border);background:var(--surface);border-radius:14px;padding:clamp(7px,1.2dvh,11px) 6px;box-shadow:var(--lift)}
+  .st b{display:block;font-family:var(--display);font-weight:400;font-size:clamp(20px,3.2dvh,26px);letter-spacing:1px;line-height:1}
+  .st span{font-size:9.5px;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+  .ov-bottom{display:grid;gap:10px;flex:none;margin-top:clamp(8px,2dvh,18px)}
+  .wtext{text-align:center;font-size:12.5px;color:var(--muted);padding:14px 0}
+  .wtext::after{content:"";animation:dots 1.4s steps(4) infinite}
+
+
+  .lvl-note{font-size:11px;color:var(--muted);text-align:center;margin-bottom:auto;line-height:1.5}
+  #leaveSheet p{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px}
+  @media (prefers-reduced-motion:reduce){#game .gs.in,.mk.draw path,.mk.draw circle,.wline line{animation:none;stroke-dashoffset:0}.cell.ghost::after,.t-status h2{animation:none}}
+</style>
+</head>
+<body>
+<div class="app" id="game">
+  <section class="gs" id="g-play">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="t-mid"><b id="tRound">ROUND 1</b><small id="tTarget">FIRST TO 3</small></div>
+      <span class="t-mode" id="tMode">Online</span>
+    </div>
+    <div class="duo" id="duo"></div>
+    <div class="arena"><div class="grid" id="grid"></div></div>
+    <div class="t-status" id="tStatus"></div>
+    <div class="rule"><span class="gh"></span>Faded piece vanishes on the next move</div>
+    <div class="t-bottom" id="tBottom"></div>
+  </section>
+
+  <section class="gs" id="g-over">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <span></span><span style="width:40px"></span>
+    </div>
+    <div class="ov" id="ov"></div>
+    <div class="ov-bottom" id="ovBottom"></div>
+  </section>
+</div>
+
+<div class="scrim" id="gScrim"></div>
+<section class="sheet" id="leaveSheet" aria-label="Leave"><div class="grab"></div><h3 id="leaveH">LEAVE THE MATCH?</h3>
+  <p id="leaveP"></p>
+  <div class="two"><button class="btn outline" type="button" data-stay>STAY</button><button class="btn" type="button" id="leaveYes">LEAVE</button></div></section>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="core/core.js?v=0.2.1"></script>
+<script src="core/howto.js?v=0.2.0"></script>
+<script src="core/core-ui.js?v=0.2.3"></script>
+<script>
+(() => {
+  'use strict';
+  const C = Cinefied, UI = CinefiedUI, esc = C.esc;
+  const $ = id => document.getElementById(id);
+  const CLAIM_MS = window.TTT_CLAIM_MS || 30000;   // how long an offline opponent has before you can claim the win
+  const NEXT_SECS = 4;                             // pause after a round before the next one starts by itself
+
+  // ══ the rules (3-piece Tic Tac Toe) ══════════════════════════
+  // A game state is plain data so it can live in the database:
+  //   b: 9 characters ('x', 'o' or '.'), mx / mo: each player's squares, oldest first,
+  //   turn, round, scores, seq (counts every change), result (round won), over (match won).
+  const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  const EMPTY = '.........';
+  const other = p => (p === 'x' ? 'o' : 'x');
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const pos = st => ({ board: st.b.split('').map(c => (c === '.' ? null : c)), moves: { x: (st.mx || '').split('').map(Number), o: (st.mo || '').split('').map(Number) } });
+  const ghostOf = (S, p) => (S.moves[p].length === 3 ? S.moves[p][0] : -1);
+  const free = (S, p) => S.board.map((v, i) => (v === null && i !== ghostOf(S, p) ? i : -1)).filter(i => i >= 0);
+  function winner(board) { for (const l of LINES) if (board[l[0]] && board[l[0]] === board[l[1]] && board[l[0]] === board[l[2]]) return { p: board[l[0]], line: l }; return null; }
+  function place(S, i, p) {
+    const b = S.board.slice(), m = { x: S.moves.x.slice(), o: S.moves.o.slice() };
+    let gone = -1;
+    if (m[p].length === 3) { gone = m[p].shift(); b[gone] = null; }
+    b[i] = p; m[p].push(i);
+    return { board: b, moves: m, gone };
+  }
+  function freshState(x, o, target, starter) {
+    return { x, o, b: EMPTY, mx: '', mo: '', turn: starter || 'x', round: 1, scores: { x: 0, o: 0 }, seq: 0, target: target || 0, moves: 0, rmoves: 0, fastest: 0, last: -1 };
+  }
+  // The state after `turn` plays square i, or null if that move isn't allowed.
+  function afterMove(cur, i) {
+    if (cur.result || cur.over) return null;
+    const S = pos(cur), p = cur.turn;
+    if (!free(S, p).includes(i)) return null;
+    const n = place(S, i, p);
+    const st = Object.assign({}, cur, {
+      b: n.board.map(v => v || '.').join(''), mx: n.moves.x.join(''), mo: n.moves.o.join(''),
+      seq: cur.seq + 1, moves: cur.moves + 1, rmoves: cur.rmoves + 1, last: i, scores: Object.assign({}, cur.scores),
+    });
+    const w = winner(n.board);
+    if (!w) { st.turn = other(p); return st; }
+    st.result = { p: w.p, line: w.line.join('') };
+    st.scores[w.p] = (st.scores[w.p] || 0) + 1;
+    if (!cur.fastest || st.rmoves < cur.fastest) st.fastest = st.rmoves;
+    if (cur.target && st.scores[w.p] >= cur.target) st.over = { w: w.p, why: 'score' };
+    return st;
+  }
+  // The loser of the round starts the next one.
+  function afterRound(cur) {
+    const st = Object.assign({}, cur, { b: EMPTY, mx: '', mo: '', turn: other(cur.result.p), round: cur.round + 1, seq: cur.seq + 1, rmoves: 0, last: -1 });
+    delete st.result;
+    return st;
+  }
+
+  // ══ the computer ═════════════════════════════════════════════
+  function winsFor(S, p) { return free(S, p).filter(i => { const w = winner(place(S, i, p).board); return w && w.p === p; }); }
+  function search(S, p, me, depth, a, b) {
+    const w = winner(S.board);
+    if (w) return w.p === me ? 100 - depth : depth - 100;
+    if (depth >= 6) return 0;
+    let best = p === me ? -1e9 : 1e9;
+    for (const i of free(S, p)) {
+      const v = search(place(S, i, p), other(p), me, depth + 1, a, b);
+      if (p === me) { best = Math.max(best, v); a = Math.max(a, v); } else { best = Math.min(best, v); b = Math.min(b, v); }
+      if (b <= a) break;
+    }
+    return best;
+  }
+  function cpuMove(st, level) {
+    const S = pos(st), p = st.turn, mv = free(S, p);
+    if (level === 'easy') { const w = winsFor(S, p); return w.length && Math.random() < 0.4 ? pick(w) : pick(mv); }
+    if (level === 'medium') {
+      const w = winsFor(S, p); if (w.length) return pick(w);
+      const safe = mv.filter(i => !winsFor(place(S, i, p), other(p)).length);
+      return pick(safe.length ? safe : mv);
+    }
+    let best = -1e9, out = [];
+    for (const i of mv) { const v = search(place(S, i, p), other(p), p, 1, -1e9, 1e9); if (v > best) { best = v; out = [i]; } else if (v === best) out.push(i); }
+    return pick(out);
+  }
+
+  // ══ what is on screen ════════════════════════════════════════
+  const MARK = {
+    x: '<svg class="mk x" viewBox="0 0 100 100"><path d="M24 24L76 76"/><path d="M76 24L24 76"/></svg>',
+    o: '<svg class="mk o" viewBox="0 0 100 100"><circle cx="50" cy="50" r="28"/></svg>',
+  };
+  const LEVEL_NOTE = { easy: 'Makes mistakes. Good for warming up.', medium: 'Takes wins and blocks yours.', hard: 'Plans several moves ahead.' };
+  const game = $('game');
+
+  // M = the match on screen: { mode: 'online' | 'local' | 'cpu', st, side (your mark online / vs computer), names, level }
+  let M = null, V = null, shown = null, seenSeq = -1, busy = false, nextTimer = null, nextLeft = 0, nextFor = null, cpuTimer = null;
+  const offSince = {};
+  let clock = null;
+
+  function show(id) {
+    if (shown === id) return;
+    shown = id;
+    document.querySelectorAll('#game .gs').forEach(s => { s.className = 'gs' + (s.id === id ? ' on in' : ''); });
+  }
+  const human = p => M.mode === 'local' || p === M.side;
+  const oppSide = () => (M.side ? other(M.side) : null);
+  function oppGone() {   // online only: the other player left the room
+    if (M.mode !== 'online' || !V) return false;
+    const u = M.st[oppSide()]; return !V.room.players[u];
+  }
+  function oppOffline() {
+    if (M.mode !== 'online' || !V) return false;
+    const p = V.room.players[M.st[oppSide()]]; return !!p && p.online === false;
+  }
+  function offFor() { const u = M.st[oppSide()]; return offSince[u] ? Date.now() - offSince[u] : 0; }
+
+  function render() {
+    if (!M) return;
+    const st = M.st;
+    if (st.over || oppGone()) { clearNext(); show('g-over'); drawOver(); return; }
+    show('g-play');
+    $('tRound').textContent = 'ROUND ' + st.round;
+    $('tTarget').textContent = st.target ? `FIRST TO ${st.target}` : 'ENDLESS';
+    $('tMode').textContent = M.mode === 'online' ? 'Online' : M.mode === 'cpu' ? M.level : 'Local';
+    drawDuo(); drawGrid(); drawStatus(); drawBottom();
+    if (st.result) startNext(); else clearNext();
+    if (M.mode === 'cpu') cpuTurn();
+  }
+  function drawDuo() {
+    const st = M.st, off = oppOffline();
+    $('duo').innerHTML = ['x', 'o'].map(p => {
+      const you = (M.mode === 'online' || M.mode === 'cpu') && p === M.side;
+      const ws = st.target ? Array.from({ length: st.target }, (_, k) => `<i class="${k < (st.scores[p] || 0) ? 'on' : ''}"></i>`).join('') : `<b>${st.scores[p] || 0}</b>`;
+      const n = (p === 'x' ? st.mx : st.mo).length, oldIdx = !st.result && st.turn === p && n === 3 ? 0 : -1;
+      const pcs = [0, 1, 2].map(k => `<i class="${k < n ? (k === oldIdx ? 'old' : 'on') : ''}"></i>`).join('');
+      const cls = ['pc', p, !st.result && st.turn === p ? 'turn' : '', off && p === oppSide() ? 'off' : ''].join(' ');
+      return `<div class="${cls}">${MARK[p]}<span class="nm">${esc(M.names[p])}${you && M.mode === 'online' ? '<small>YOU</small>' : ''}</span>
+        <div class="meta"><span class="wins">${ws}</span><span class="pcs" title="pieces on the board">${pcs}</span></div></div>`;
+    }).join('');
+  }
+  function canMove() { const st = M.st; return !st.result && !st.over && !busy && human(st.turn); }
+  function drawGrid() {
+    const st = M.st, S = pos(st);
+    const gh = st.result ? -1 : ghostOf(S, st.turn);
+    const mine = canMove();
+    const win = st.result ? st.result.line.split('').map(Number) : [];
+    const fresh = st.seq !== seenSeq ? st.last : -1;
+    seenSeq = st.seq;
+    $('grid').className = 'grid' + (st.result ? ' done' : '');
+    $('grid').style.setProperty('--wc', st.result ? `var(--${st.result.p})` : 'transparent');
+    let html = S.board.map((v, i) => {
+      const cls = ['cell', mine && v === null && i !== gh ? 'can' : 'lock', i === gh ? 'ghost' : '', win.includes(i) ? 'win' : ''].join(' ');
+      const mark = v ? MARK[v].replace('class="mk', `class="mk${i === fresh ? ' draw' : ''}`) : '';
+      return `<button class="${cls}" type="button" data-cell="${i}" style="--gc:var(--${st.turn})" aria-label="Square ${i + 1}${v ? ', ' + v.toUpperCase() : ''}">${mark}</button>`;
+    }).join('');
+    if (st.result) {
+      const c = k => [(k % 3) * 100 / 3 + 100 / 6, Math.floor(k / 3) * 100 / 3 + 100 / 6];
+      const a = c(win[0]), b = c(win[2]);
+      html += `<svg class="wline" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" vector-effect="non-scaling-stroke"/></svg>`;
+    }
+    $('grid').innerHTML = html;
+  }
+  function who(p) { return M.mode === 'local' ? p.toUpperCase() : human(p) ? 'You' : esc(M.names[p]); }
+  function drawStatus() {
+    const st = M.st, el = $('tStatus');
+    if (st.result) {
+      const p = st.result.p;
+      el.style.setProperty('--wc', `var(--${p})`);
+      const line = M.mode !== 'local' && human(p) ? 'YOU TAKE IT' : `${(M.mode === 'local' ? p.toUpperCase() : M.names[p]).toUpperCase()} TAKES IT`;
+      el.innerHTML = `<h2>${esc(line)}</h2><p>${st.scores.x || 0} – ${st.scores.o || 0}</p>`;
+      return;
+    }
+    if (oppOffline() && st.turn === oppSide()) { el.innerHTML = `<span class="offpill"><i></i>${esc(M.names[oppSide()])} is offline · waiting</span>`; return; }
+    const p = st.turn;
+    let txt;
+    if (st.rmoves === 0 && st.round > 1) txt = M.mode === 'local' ? `<b>${p.toUpperCase()}</b> lost the last round, so starts` : human(p) ? '<b>You</b> lost the last round, so you start' : `<b>${who(p)}</b> lost the last round, so starts`;
+    else if (M.mode === 'local') txt = `<b>${p.toUpperCase()}</b> to move`;
+    else if (human(p)) txt = st.rmoves === 0 ? '<b>Your move.</b> You start this round.' : '<b>Your move</b>';
+    else txt = M.mode === 'cpu' ? '<span class="think">Computer is thinking</span>' : `<span class="think"><b>${who(p)}</b> is moving</span>`;
+    el.innerHTML = `<p>${txt}</p>`;
+  }
+  function drawBottom() {
+    const st = M.st, b = $('tBottom');
+    let html = '';
+    if (st.result) html = `<button class="btn" type="button" data-next>NEXT ROUND · ${Math.max(nextLeft, 0)}</button>`;
+    else if (oppOffline() && st.turn === oppSide()) {
+      const left = Math.ceil((CLAIM_MS - offFor()) / 1000);
+      html = left > 0 ? `<p class="hint" style="margin:0 0 6px">You can claim the win in ${left}s if ${esc(M.names[oppSide()])} doesn't come back</p>`
+                      : `<button class="btn outline" type="button" data-claim>CLAIM THE WIN</button>`;
+    }
+    if (b.dataset.h !== html) { b.dataset.h = html; b.innerHTML = html; }
+  }
+  function drawOver() {
+    const st = M.st, left = !st.over && oppGone();
+    const w = st.over ? st.over.w : M.side;
+    const youWon = M.mode === 'local' ? null : w === M.side;
+    const title = M.mode === 'local' ? `${w.toUpperCase()} WINS` : youWon ? 'YOU WIN' : M.mode === 'cpu' ? 'COMPUTER WINS' : `${M.names[w].toUpperCase()} WINS`;
+    const why = left ? 'OPPONENT LEFT' : st.over.why === 'claim' ? 'OPPONENT WENT OFFLINE' : 'MATCH OVER';
+    const key = JSON.stringify([st.seq, left, V && V.isLeader]);
+    if ($('ov').dataset.k !== key) {
+      $('ov').dataset.k = key;
+      $('ov').style.setProperty('--wc', `var(--${w})`);
+      $('ov').innerHTML = `<small>${why}</small>
+        <div class="big">${MARK[w].replace('class="mk', 'class="mk draw')}</div>
+        <h1 class="${youWon === false ? 'lose' : ''}">${esc(title)}</h1>
+        <div class="score"><span class="sx">${st.scores.x || 0}</span><em>–</em><span class="so">${st.scores.o || 0}</span></div>
+        <p>${M.mode === 'cpu' ? `Level: ${esc(M.level)}. ` : ''}${esc(M.names.x)} <span style="color:var(--x)">X</span> vs ${esc(M.names.o)} <span style="color:var(--o)">O</span></p>
+        <div class="ov-stats"><div class="st"><b>${st.round}</b><span>Rounds</span></div><div class="st"><b>${st.moves}</b><span>Moves</span></div><div class="st"><b>${st.fastest || '–'}</b><span>Fastest win</span></div></div>`;
+    }
+    let html;
+    if (M.mode !== 'online') html = `<button class="btn" type="button" data-again>PLAY AGAIN</button><button class="btn outline" type="button" data-quit>${M.mode === 'cpu' ? 'CHANGE LEVEL' : 'BACK'}</button>`;
+    else if (V.isLeader) html = (left ? '' : `<button class="btn" type="button" data-rematch>REMATCH</button>`) + `<button class="btn outline" type="button" data-lobby>WAITING ROOM</button>`;
+    else { const L = V.room.players[V.room.leader]; html = `<p class="wtext">Waiting for ${esc(L ? L.name : 'the leader')} to choose</p><button class="btn outline" type="button" data-leave>LEAVE</button>`; }
+    if ($('ovBottom').dataset.h !== html) { $('ovBottom').dataset.h = html; $('ovBottom').innerHTML = html; }
+  }
+
+  // ══ actions ══════════════════════════════════════════════════
+  async function change(fn) {          // online: one safe step on the shared state; local/computer: just do it
+    if (M.mode !== 'online') { const n = fn(M.st); if (n) { M.st = n; render(); } return !!n; }
+    busy = true; render();
+    const r = await C.txnState(cur => fn(cur) || undefined);
+    busy = false; if (M) render();
+    return r.committed;
+  }
+  function play(i) {
+    if (!canMove()) return;
+    const S = pos(M.st);
+    if (i === ghostOf(S, M.st.turn)) return UI.say('That piece is about to disappear');
+    if (!free(S, M.st.turn).includes(i)) return;
+    const me = M.side;
+    change(cur => (M.mode === 'online' && cur.turn !== me ? null : afterMove(cur, i)));
+  }
+  function nextRound() {
+    const r = M.st.round;
+    clearNext();
+    change(cur => (cur.result && !cur.over && cur.round === r ? afterRound(cur) : null));
+  }
+  function startNext() {
+    const key = M.st.seq;
+    if (nextFor === key) return;
+    clearNext(); nextFor = key; nextLeft = NEXT_SECS; drawBottom();
+    nextTimer = setInterval(() => { nextLeft--; if (nextLeft <= 0) { clearNext(); nextRound(); } else drawBottom(); }, 1000);
+  }
+  function clearNext() { clearInterval(nextTimer); nextTimer = null; nextFor = null; }
+  function claim() {
+    const me = C.me.uid, side = M.side;
+    change(cur => (cur.over || cur.result || cur.turn === side ? null : Object.assign({}, cur, { over: { w: side, why: 'claim' }, claim: me, seq: cur.seq + 1 })));
+  }
+  function cpuTurn() {
+    const st = M.st;
+    if (st.result || st.over || st.turn === M.side || cpuTimer) return;
+    cpuTimer = setTimeout(() => {
+      cpuTimer = null;
+      if (!M || M.mode !== 'cpu' || M.st.result || M.st.over || M.st.turn === M.side) return;
+      const i = cpuMove(M.st, M.level);
+      const n = afterMove(M.st, i); if (n) { M.st = n; render(); }
+    }, 650);
+  }
+
+  // ══ local and computer matches (no room, no internet needed) ══
+  const pickIn = (pane, set) => { const b = document.querySelector(`[data-pane="${pane}"] [data-lset="${set}"] .opt.on`); return b ? b.dataset.v : null; };
+  function startSolo(mode) {
+    const target = Number(pickIn(mode, 'target') || 3);
+    M = { mode, level: mode === 'cpu' ? pickIn('cpu', 'level') || 'medium' : null, side: mode === 'cpu' ? 'x' : null,
+          names: mode === 'cpu' ? { x: 'You', o: 'Computer' } : { x: 'Player X', o: 'Player O' }, st: freshState('x', 'o', target, 'x') };
+    seenSeq = -1; shown = null;
+    document.body.classList.add('solo'); game.classList.add('on'); scrollTo(0, 0);
+    render();
+  }
+  function endSolo() {
+    clearNext(); clearTimeout(cpuTimer); cpuTimer = null;
+    M = null; shown = null; game.classList.remove('on'); document.body.classList.remove('solo');
+  }
+
+  // ══ online: hand-off with the core ═══════════════════════════
+  function fromRoom(v) {
+    V = v;
+    const st = v.room.state;
+    if (!st || !st.x) return;
+    const ps = v.room.players;
+    if (!M || M.mode !== 'online') { M = { mode: 'online' }; seenSeq = -1; }
+    M.st = st;
+    M.side = st.x === v.me ? 'x' : st.o === v.me ? 'o' : null;
+    M.names = { x: (ps[st.x] && ps[st.x].name) || M.names && M.names.x || 'Player X', o: (ps[st.o] && ps[st.o].name) || M.names && M.names.o || 'Player O' };
+    [st.x, st.o].forEach(u => { const p = ps[u]; if (p && p.online === false) offSince[u] = offSince[u] || Date.now(); else delete offSince[u]; });
+    render();
+  }
+  clearInterval(clock);
+  clock = setInterval(() => { if (M && M.mode === 'online' && oppOffline()) drawBottom(); }, 1000);
+
+  // ══ touches ══════════════════════════════════════════════════
+  const closeLeave = () => { $('leaveSheet').classList.remove('open'); $('gScrim').classList.remove('open'); };
+  document.addEventListener('click', e => {
+    const t = e.target;
+    const lopt = t.closest('[data-lset] .opt');
+    if (lopt) {
+      lopt.parentElement.querySelectorAll('.opt').forEach(x => x.classList.toggle('on', x === lopt));
+      if (lopt.parentElement.dataset.lset === 'level') $('lvlNote').textContent = LEVEL_NOTE[lopt.dataset.v];
+      return;
+    }
+    const sp = t.closest('[data-solo]'); if (sp) return startSolo(sp.dataset.solo);
+    if (t.closest('#gScrim') || t.closest('[data-stay]')) return closeLeave();
+    if (t.closest('#leaveYes')) { closeLeave(); if (M && M.mode !== 'online') return endSolo(); return void UI.leaveGame(); }
+    if (!M || !t.closest('#game')) return;
+    if (t.closest('[data-leave]')) {
+      const online = M.mode === 'online';
+      $('leaveH').textContent = online ? 'LEAVE THE MATCH?' : 'QUIT THIS GAME?';
+      $('leaveP').textContent = online ? (M.st.over || oppGone() ? 'You will leave the room.' : `${M.names[oppSide()]} wins the match if you leave.`) : 'The score will be lost.';
+      $('leaveSheet').classList.add('open'); $('gScrim').classList.add('open');
+      return;
+    }
+    const cell = t.closest('[data-cell]'); if (cell) return play(Number(cell.dataset.cell));
+    if (t.closest('[data-next]')) return nextRound();
+    if (t.closest('[data-claim]')) return claim();
+    if (t.closest('[data-again]')) { const n = freshState('x', 'o', M.st.target, M.st.over ? other(M.st.over.w) : 'x'); M.st = n; seenSeq = -1; shown = null; return render(); }
+    if (t.closest('[data-quit]')) return endSolo();
+    if (t.closest('[data-rematch]')) {
+      const st = M.st;   // same sides; the loser of the match starts
+      return void C.setPhase('playing', freshState(st.x, st.o, st.target, st.over ? other(st.over.w) : 'x')).catch(err => UI.say(C.message(err)));
+    }
+    if (t.closest('[data-lobby]')) return void C.setPhase('waiting', null).catch(err => UI.say(C.message(err)));
+  });
+
+  // ══ mount ════════════════════════════════════════════════════
+  const ICON = {
+    online: '<svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="8" height="14" rx="2"/><rect x="13.5" y="5" width="8" height="14" rx="2"/><path d="M6 16h1M17 16h1"/></svg>',
+    local: '<svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M3 9l-1.5 1.5L3 12M21 12l1.5 1.5L21 15"/></svg>',
+    cpu: '<svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 3v4M9 12h.01M15 12h.01M9.5 16h5"/></svg>',
+  };
+  const FIRST = '<div class="prow"><span>First to</span><div class="opts sm" data-lset="target"><button class="opt on" type="button" data-v="3">3</button><button class="opt" type="button" data-v="5">5</button><button class="opt" type="button" data-v="7">7</button><button class="opt" type="button" data-v="0">Endless</button></div></div>';
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = {
+    steps: [
+      { d: 3700, t: 'Take turns placing your X or O. Three in a row wins the round.' },
+      { d: 4200, t: 'You only ever have 3 pieces. Your oldest one shows faded, and your next move erases it.' },
+      { d: 3600, t: 'Line up three to win the round. The loser starts the next one. First to the target wins the match.' }
+    ],
+    build(svg, K) {
+      const { el, op, cl, pr, ease, back, lerp, fitLines, Phone, Player, Chip, Label, WidePill, Ripple, COLORS } = K;
+      const CX = i => 116 + 44 * (i % 3), CY = i => 72 + 44 * Math.floor(i / 3);
+      const grid = el('g', { stroke: 'var(--border)', 'stroke-width': 2.5, 'stroke-linecap': 'round' }, svg);
+      [138, 182].forEach(x => el('path', { d: `M${x} 52V180` }, grid));
+      [94, 138].forEach(y => el('path', { d: `M96 ${y}H224` }, grid));
+      const XC = 'var(--accent)', OC = 'var(--blue)';
+      const moves = [['X', 0], ['O', 4], ['X', 8], ['O', 2], ['X', 6], ['O', 3], ['X', 7]];
+      const pieces = moves.map(([k, c]) => {
+        const g = el('g', { opacity: 0, fill: 'none', 'stroke-width': 5, 'stroke-linecap': 'round', stroke: k === 'X' ? XC : OC }, svg);
+        if (k === 'X') el('path', { d: 'M-11 -11L11 11M11 -11L-11 11' }, g); else el('circle', { r: 12 }, g);
+        return { g, c, set(o, s = 1) { op(g, o); g.setAttribute('transform', `translate(${CX(c)} ${CY(c)}) scale(${Math.max(.01, s).toFixed(3)})`); } };
+      });
+      const win = el('path', { d: 'M100 160H220', stroke: XC, 'stroke-width': 6, 'stroke-linecap': 'round', 'stroke-dasharray': 120, 'stroke-dashoffset': 120, opacity: .9 }, svg);
+      const pl = el('g', {}, svg), R = Player(pl, 40, 116, 'R', COLORS[0]), S = Player(pl, 280, 116, 'S', COLORS[1]);
+      const tagX = el('text', { class: 'd', 'text-anchor': 'middle', x: 40, y: 150, 'font-size': 14, fill: XC }, svg, 'X');
+      const tagO = el('text', { class: 'd', 'text-anchor': 'middle', x: 280, y: 150, 'font-size': 14, fill: OC }, svg, 'O');
+      const cR = Chip(svg), cS = Chip(svg), tap = Ripple(svg);
+      const pop = (u, a) => back(pr(u, a, 260));
+      return (s, u) => {
+        cR.hide(); cS.hide(); tap.set(0, 0, 0); win.setAttribute('stroke-dashoffset', 120);
+        R.set(); S.set();
+        if (s === 0) {
+          pieces.forEach((p, k) => { const a = 300 + k * 520; p.set(k < 6 && u >= a ? 1 : 0, pop(u, a)); });
+          const k = Math.min(5, Math.floor((u - 300) / 520)); if (k >= 0) (moves[k][0] === 'X' ? R : S).set({ ring: 1 });
+        } else if (s === 1) {
+          const f = pr(u, 300, 400);
+          pieces.forEach((p, k) => {
+            if (k === 6) return p.set(u >= 1900 ? 1 : 0, pop(u, 1900));
+            if (k === 0) { const gone = pr(u, 2050, 450); return p.set((1 - .65 * f) * (1 - gone), 1 - .6 * gone); }
+            if (k === 1) return p.set(1 - .65 * f);
+            p.set(1);
+          });
+          if (u > 500) cR.set('Oldest X is faded', 70, 212, pop(u, 500));
+          R.set({ ring: 1 }); tap.set(CX(7), CY(7), pr(u, 1850, 500), 22);
+          if (u > 2500) cR.set('It disappears', 70, 212, pop(u, 2500));
+        } else {
+          pieces.forEach((p, k) => p.set(k === 0 ? 0 : k === 1 ? .35 : 1));
+          win.setAttribute('stroke-dashoffset', (120 * (1 - ease(pr(u, 200, 500)))).toFixed(1));
+          R.set({ ring: 1, ringC: 'var(--green)' });
+          if (u > 600) cR.set('R wins the round', 70, 212, pop(u, 600), 'ok');
+          if (u > 1800) { cS.set('S starts next', 250, 238, pop(u, 1800)); S.set({ ring: 1 }); }
+        }
+      };
+    }
+  };
+
+  UI.mount({
+    game: {
+      howto: HOWTO,
+      id: 'tictactoe', name: 'Tic Tac Toe', shelf: 'Duels', color: 'var(--purple)', glyph: 'X',
+      pitch: 'Three pieces each. Your fourth move erases your oldest one. Line up three to win.',
+      facts: ['2 players', '~5 min'],
+      rules: ['Take turns placing your X or O. Three in a row wins the round.',
+              'You only ever have 3 pieces. Your 4th move erases your oldest one.',
+              'The piece that will disappear next shows faded, so plan ahead.',
+              'The loser of a round starts the next one. First to the target wins the match.'],
+      min: 2, max: 2,
+      settings: [{ key: 'target', label: 'First to', options: [3, 5, 7, 0], default: 3, show: v => (Number(v) ? `${v} wins` : 'Endless'), summary: v => (Number(v) ? `First to ${v}` : 'Endless') }],
+      modes: [
+        { id: 'online', label: 'Online', icon: ICON.online, note: '<b>Online multiplayer.</b> Each player on their own phone.' },
+        { id: 'local', label: 'Local', icon: ICON.local, note: '<b>Local multiplayer.</b> Take turns on this phone.',
+          html: FIRST + '<button class="btn" type="button" data-solo="local">PLAY</button>' },
+        { id: 'cpu', label: 'Computer', icon: ICON.cpu, note: '<b>Play vs computer.</b> <span id="lvlNote">' + LEVEL_NOTE.medium + '</span>',
+          html: '<div class="prow"><span>Level</span><div class="opts sm" data-lset="level"><button class="opt" type="button" data-v="easy">Easy</button><button class="opt on" type="button" data-v="medium">Medium</button><button class="opt" type="button" data-v="hard">Hard</button></div></div>'
+            + FIRST + '<button class="btn" type="button" data-solo="cpu">PLAY</button>' },
+      ],
+      // START: the two players get random sides; X starts the first round.
+      startState: v => {
+        const ids = v.online.map(p => p.uid).sort(() => Math.random() - 0.5);
+        const t = v.room.settings && v.room.settings.target !== undefined ? Number(v.room.settings.target) : 3;
+        return freshState(ids[0], ids[1], t, 'x');
+      },
+    },
+    gameNames: { pictionary: 'Pictionary', imposter: 'Imposter', cluepool: 'Clue Pool', tierd: "Tier'd", tictactoe: 'Tic Tac Toe' },
+    onStart: v => { if (M && M.mode !== 'online') endSolo(); shown = null; game.classList.add('on'); fromRoom(v); },
+    onUpdate: v => fromRoom(v),
+    onLobby: () => { V = null; M = null; shown = null; clearNext(); closeLeave(); game.classList.remove('on'); },
+  });
+})();
+</script>
+</body>
+</html>

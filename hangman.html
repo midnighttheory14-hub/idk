@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Hangman · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  /* Hangman: solo. Guess the movie title letter by letter. Six misses and it's CUT. Keep going for a run. */
+  :root{--c:var(--yellow);--ct:#0a0a0f}
+  [data-theme=light]{--ct:#fff}
+  [hidden]{display:none!important}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{user-select:none;-webkit-user-select:none;touch-action:manipulation}
+  .gs{display:none;position:fixed;inset:0;flex-direction:column;
+      padding:calc(10px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
+  .gs.on{display:flex;animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  .wrap{flex:1;min-height:0;display:flex;flex-direction:column;max-width:460px;width:100%;margin:0 auto}
+  .go{background:var(--c);color:var(--ct);box-shadow:0 10px 26px color-mix(in srgb,var(--c) 30%,transparent)}
+  .btn.go{background:var(--c);color:var(--ct)}
+  .ht-btns .btn:not(.outline){color:var(--ct)}
+  .bestline{margin-top:clamp(12px,2.4dvh,20px);font-size:11px;letter-spacing:2px;color:var(--muted)}
+  .bestline b{font-family:var(--display);font-weight:400;font-size:24px;letter-spacing:1px;color:var(--text);margin-left:6px;vertical-align:-3px}
+
+  /* playing */
+  #s-play{background:radial-gradient(70% 40% at 20% 6%,color-mix(in srgb,var(--c) 8%,transparent),transparent 70%),var(--bg)}
+  .top{display:flex;align-items:center;gap:14px;min-height:44px}
+  .stat{display:flex;flex-direction:column;line-height:1}
+  .stat small{font-size:9.5px;letter-spacing:2px;color:var(--muted)}
+  .stat b{font-family:var(--display);font-weight:400;font-size:28px;letter-spacing:1px}
+  .stat.sc b{color:var(--c)}
+  .stat b.bump{animation:bump .45s cubic-bezier(.2,1.6,.4,1)}
+  @keyframes bump{40%{transform:scale(1.35)}}
+  .top .sp{flex:1}
+  #board{flex:1;min-height:0}
+  .after{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;animation:fwd .4s both}
+  .after h2{font-family:var(--display);font-weight:400;font-size:clamp(34px,9vw,48px);letter-spacing:3px;line-height:1}
+  .after h2.win{color:var(--c)} .after h2.lose{color:var(--accent)}
+  .after p{font-size:11.5px;color:var(--muted);line-height:1.6;min-height:1.2em}
+  .after p.new{color:var(--green)}
+  .after .acts{display:flex;flex-direction:column;gap:10px;width:min(320px,100%);margin-top:6px}
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- 1. ENTRY -->
+  <section class="gs on" id="s-home">
+    <div class="bar">
+      <button class="icon-btn" type="button" id="homeBtn" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="chipbtn" type="button" data-rules>How to play</button>
+    </div>
+    <div class="wrap">
+      <div class="hero">
+        <div class="glyph" aria-hidden="true">H</div>
+        <div class="kind"><i></i>Solo</div>
+        <h1>HANGMAN</h1>
+        <p>Guess the movie title one letter at a time. Six wrong letters and it's a cut.</p>
+        <div class="facts"><span class="fact">Movie titles</span><span class="fact">6 misses</span><span class="fact">No timer</span></div>
+        <div class="bestline">YOUR BEST RUN <b id="homeBest">0</b></div>
+      </div>
+      <button class="btn go" type="button" id="startBtn">START</button>
+    </div>
+  </section>
+
+  <!-- 2. A TITLE -->
+  <section class="gs" id="s-play">
+    <div class="wrap">
+      <div class="top">
+        <div class="stat sc"><small>RUN</small><b id="run">0</b></div>
+        <div class="stat"><small>BEST</small><b id="best">0</b></div>
+        <span class="sp"></span>
+        <button class="icon-btn" type="button" id="stopBtn" aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div id="board"></div>
+      <div class="after" id="after" hidden></div>
+    </div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet ht-sheet" id="rulesSheet" aria-label="How to play"><div class="grab"></div><div id="howto"></div></section>
+
+<script src="core/howto.js?v=0.3.0"></script>
+<script src="core/hangman.js?v=0.1.0"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  // ═════════════ TITLES (edit here; moves to data/movies.js in the data migration) ═════════════
+  const TITLES = [
+    'Geethanjali', 'Shiva', 'Gharana Mogudu', 'Hello Brother', 'Ninne Pelladata', 'Annamayya', 'Tholi Prema', 'Narasimha',
+    'Thammudu', 'Badri', 'Kushi', 'Murari', 'Narasimha Naidu', 'Nuvvu Naaku Nachav', 'Student No. 1', 'Aadi', 'Chennakesava Reddy',
+    'Idiot', 'Indra', 'Jayam', 'Khadgam', 'Manmadhudu', 'Gangotri', 'Okkadu', 'Simhadri', 'Tagore', 'Arjun', 'Arya',
+    'Gudumba Shankar', 'Malliswari', 'Shankar Dada M.B.B.S.', 'Varsham', 'Venky', 'Athadu', 'Balu', 'Bhadra', 'Bunny',
+    'Chatrapathi', 'Annavaram', 'Ashok', 'Bommarillu', 'Godavari', 'Happy', 'Pokiri', 'Stalin', 'Vikramarkudu', 'Athidhi',
+    'Chirutha', 'Desamuduru', 'Dhee', 'Dubai Seenu', 'Happy Days', 'Shivaji', 'Yamadonga', 'Ashta Chamma', 'Bujjigadu',
+    'Jalsa', 'King', 'Kotha Bangaru Lokam', 'Parugu', 'Ready', 'Surya S/O Krishnan', 'Arundhati', 'Arya 2', 'Billa',
+    'Kick', 'Magadheera', 'Adhurs', 'Brindavanam', 'Darling', 'Khaleja', 'Leader', 'Maryada Ramanna', 'Orange', 'Simha',
+    'Vedam', 'Ye Maaya Chesave', '100% Love', 'Ala Modalaindi', 'Badrinath', 'Dookudu', 'Mirapakay', 'Mr. Perfect', 'Panjaa',
+    'Businessman', 'Eega', 'Gabbar Singh', 'Ishq', 'Julayi', 'Racha', 'Rebel', 'Attarintiki Daredi', 'Baadshah', 'Balupu',
+    'Mirchi', 'Naayak', 'Aagadu', 'Drushyam', 'Govindudu Andarivadele', 'Karthikeya', 'Legend', 'Manam', 'Race Gurram',
+    'Run Raja Run', 'Yevadu', 'Bhale Bhale Magadivoy', 'Gopala Gopala', 'Premam', 'Rudhramadevi', 'S/O Satyamurthy',
+    'Srimanthudu', 'Temper', 'Babu Bangaram', 'Brahmotsavam', 'Dhruva', 'Janatha Garage', 'Kshanam', 'Nannaku Prematho',
+    'Nenu Sailaja', 'Oopiri', 'Pelli Choopulu', 'Sardaar Gabbar Singh', 'Sarrainodu', 'Soggade Chinni Nayana', 'Arjun Reddy',
+    'Fidaa', 'Gautamiputra Satakarni', 'Jai Lava Kusa', 'Katamarayudu', 'Khaidi No. 150', 'Middle Class Abbayi', 'Nenu Local',
+    'Ninnu Kori', 'Raja The Great', 'Spyder', 'Agnyaathavaasi', 'Bharat Ane Nenu', 'Ee Nagaraniki Emaindi', 'Geetha Govindam',
+    'Goodachari', 'Mahanati', 'Rangasthalam', 'Taxiwaala', 'Dear Comrade', 'Evaru', 'Gaddalakonda Ganesh', 'Gang Leader',
+    'iSmart Shankar', 'Jersey', 'Maharshi', 'Majili', 'Mathu Vadalara', 'Prati Roju Pandage', 'Saaho', 'Sye Raa Narasimha Reddy',
+    'Vinaya Vidheya Rama', 'Ala Vaikunthapurramuloo', 'Bheeshma', 'Color Photo', 'Sarileru Neekevvaru', 'World Famous Lover',
+    'Akhanda', 'Jathi Ratnalu', 'Krack', 'Love Story', 'Shyam Singha Roy', 'Uppena', 'Vakeel Saab', 'Acharya', 'Ante Sundaraniki',
+    'Bangarraju', 'Bheemla Nayak', 'Bimbisara', 'Dhamaka', 'DJ Tillu', 'GodFather', 'Karthikeya 2', 'Liger', 'Major',
+    'Radhe Shyam', 'Sarkaru Vaari Paata', 'Sita Ramam', 'Adipurush', 'Baby', 'Bhagavanth Kesari', 'Bhola Shankar', 'Dasara',
+    'Hi Nanna', 'Veera Simha Reddy', 'Virupaksha', 'Waltair Veerayya', 'Family Star', 'Guntur Kaaram', 'Hanu-Man', 'Kalki 2898 AD',
+    'Lucky Baskhar', 'Saripodhaa Sanivaaram', 'Tillu Square', 'Daaku Maharaj', 'Game Changer', 'Hari Hara Veera Mallu',
+    'Kingdom', 'Kuberaa', 'Mirai', 'Sankranthiki Vasthunnam', 'Thandel', 'They Call Him OG'
+  ];
+
+  // ── theme: follows the phone unless the player chose one in Profile ──
+  const sysDark = matchMedia('(prefers-color-scheme: dark)');
+  function theme() {
+    let pref = 'system'; try { pref = localStorage.getItem('cf_theme') || 'system'; } catch (e) {}
+    const t = pref === 'system' ? (sysDark.matches ? 'dark' : 'light') : pref;
+    document.documentElement.dataset.theme = t;
+    document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#f4f4f8' : '#0a0a0f';
+  }
+  theme(); sysDark.addEventListener('change', theme);
+
+  // ── no title repeats until every one has come up (remembered on this phone) ──
+  const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
+  const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  let used = load('cf_hangman_used', []), best = load('cf_hangman_best', 0), run = 0;
+  function nextTitle() {
+    if (used.length >= TITLES.length) used = [];
+    const left = TITLES.filter(t => !used.includes(t));
+    const t = left[Math.floor(Math.random() * left.length)];
+    used.push(t); keep('cf_hangman_used', used);
+    return t;
+  }
+
+  // ── the board ──
+  const H = CinefiedHangman.create($('board'), { onEnd });
+  function stats(bumpRun) {
+    $('run').textContent = run; $('best').textContent = best; $('homeBest').textContent = best;
+    if (bumpRun) { const b = $('run'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
+  }
+  function play() { $('after').hidden = true; H.start(nextTitle()); stats(); }
+  function onEnd(S) {
+    const a = $('after'); a.hidden = false;
+    if (S.over === 'win') {
+      run++; const record = run > best; if (record) { best = run; keep('cf_hangman_best', best); }
+      stats(true);
+      a.innerHTML = `<h2 class="win">OK, TAKE</h2><p class="${record ? 'new' : ''}">${record ? 'New best run!' : S.wrong ? S.wrong + (S.wrong === 1 ? ' miss' : ' misses') : 'No misses'}</p>
+        <div class="acts"><button class="btn go" type="button" id="nextBtn">NEXT TITLE</button></div>`;
+    } else {
+      a.innerHTML = `<h2 class="lose">CUT!</h2><p>Your run: ${run}${run && run >= best ? ' · your best' : best ? ' · best ' + best : ''}</p>
+        <div class="acts"><button class="btn go" type="button" id="againBtn">PLAY AGAIN</button><button class="btn outline" type="button" id="quitBtn">STOP</button></div>`;
+      run = 0;
+    }
+  }
+
+  // ── keep the screen awake while playing ──
+  let wake = null;
+  async function grab() { try { if (navigator.wakeLock && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } } catch (e) {} }
+  function drop() { try { wake && wake.release(); } catch (e) {} wake = null; }
+
+  function show(id) { document.querySelectorAll('#game .gs').forEach(s => s.classList.toggle('on', s.id === id)); }
+
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = {
+    steps: [
+      { d: 2600, t: 'A Telugu movie title is hidden. Each blank is one letter.' },
+      { d: 3200, t: 'Tap a letter. If it is in the title, it fills in everywhere it appears.' },
+      { d: 4200, t: 'A wrong letter adds a stroke to the storyboard. Six wrong letters and it is CUT!' },
+      { d: 4200, t: 'Fill the whole title for OK, TAKE and move on to the next. One cut ends your run.' }
+    ],
+    build(svg, K) {
+      const { el, op, pr, ease, back, Ripple } = K;
+      const YC = '#ffd93d', PEN = '#3b3a42', DISP = "'Bebas Neue',Impact,sans-serif";
+      const pop = (u, a) => back(pr(u, a, 280));
+      // a small storyboard page
+      const sb = el('g', { transform: 'translate(79 0) scale(.54)' }, svg);
+      el('rect', { x: 30, y: 8, width: 240, height: 184, rx: 6, fill: '#f2ecdd' }, sb);
+      el('rect', { x: 42, y: 26, width: 216, height: 150, fill: 'none', stroke: '#b9b1a0', 'stroke-width': 1.6 }, sb);
+      el('path', { d: 'M82 168 H170 M108 168 V44 H190 V60', stroke: PEN, 'stroke-width': 2.8, 'stroke-linecap': 'round', fill: 'none' }, sb);
+      const fg = el('g', { stroke: PEN, 'stroke-width': 3, 'stroke-linecap': 'round', fill: 'none' }, sb);
+      const parts = [el('circle', { cx: 190, cy: 76, r: 16 }, fg), el('path', { d: 'M190 92 V138' }, fg), el('path', { d: 'M190 104 L169 126' }, fg),
+        el('path', { d: 'M190 104 L211 126' }, fg), el('path', { d: 'M190 138 L173 168' }, fg), el('path', { d: 'M190 138 L207 168' }, fg)];
+      parts.forEach(p => { p.dataset.l = p.getTotalLength(); p.setAttribute('stroke-dasharray', p.dataset.l); });
+      const stamp = el('g', { opacity: 0 }, svg);
+      el('rect', { x: 108, y: 40, width: 104, height: 32, rx: 4, fill: 'none', stroke: '#c0392b', 'stroke-width': 2.8 }, stamp);
+      const stampT = el('text', { x: 160, y: 64, 'text-anchor': 'middle', 'font-family': DISP, 'font-size': 21, 'letter-spacing': 1.5, fill: '#c0392b' }, stamp, 'OK, TAKE');
+      // the title: POKIRI
+      const W = 'POKIRI', X0 = 160 - (6 * 24 + 5 * 7) / 2 + 12;
+      const tiles = [...W].map((ch, i) => {
+        const x = X0 + i * 31;
+        const line = el('rect', { x: x - 12, y: 152, width: 24, height: 2.5, rx: 1, fill: 'var(--border)' }, svg);
+        const t = el('text', { x, y: 147, 'text-anchor': 'middle', 'font-family': DISP, 'font-size': 26, fill: 'var(--text)', opacity: 0 }, svg, ch);
+        return { line, t, ch };
+      });
+      // the keyboard, all three rows
+      const ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'], KW = 26, KH = 22, KG = 3.5, keys = [];
+      ROWS.forEach((row, ri) => {
+        const x0 = 160 - (row.length * KW + (row.length - 1) * KG) / 2, y = 168 + ri * (KH + 4);
+        [...row].forEach((ch, i) => {
+          const g = el('g', {}, svg), x = x0 + i * (KW + KG);
+          const r = el('rect', { x, y, width: KW, height: KH, rx: 5, fill: 'var(--surface)', stroke: 'var(--border)' }, g);
+          const t = el('text', { x: x + KW / 2, y: y + 16, 'text-anchor': 'middle', 'font-family': DISP, 'font-size': 14, fill: 'var(--text)' }, g, ch);
+          keys.push({ g, r, t, x: x + KW / 2, y: y + KH / 2, ch });
+        });
+      });
+      const KEYS = keys.map(k => k.ch);
+      const tap = Ripple(svg), runL = el('text', { x: 300, y: 22, 'text-anchor': 'end', 'font-family': DISP, 'font-size': 18, 'letter-spacing': 1, fill: 'var(--muted)' }, svg, '');
+      const press = (ch, u, a) => { const k = keys.find(k => k.ch === ch); if (u > a && u < a + 700) tap.set(k.x, k.y, pr(u, a, 600), 18); };
+      return (s, u) => {
+        // what has been guessed by this moment
+        const seq = s === 0 ? [] : s === 1 ? [['I', 900]] : s === 2 ? [['I', -1], ['Z', 500], ['E', 1700], ['A', 2600]] : [['I', -1], ['Z', -1], ['E', -1], ['P', 400], ['O', 1100], ['K', 1800], ['R', 2500]];
+        const got = seq.filter(([, a]) => u > a + 150).map(([c]) => c);
+        const wrongN = got.filter(c => !W.includes(c)).length;
+        tap.set(0, 0, 0);
+        seq.forEach(([c, a]) => { if (a >= 0 && KEYS.includes(c)) press(c, u, a); });
+        tiles.forEach((tl, i) => {
+          const on = got.includes(tl.ch), a = (seq.find(([c]) => c === tl.ch) || [0, -1])[1];
+          op(tl.t, s === 0 ? 0 : on ? (a < 0 ? 1 : pr(u, a + 150, 250)) : 0);
+          tl.line.setAttribute('fill', on ? YC : 'var(--border)');
+          op(tl.line, s === 0 ? pr(u, i * 140, 250) : 1);
+        });
+        keys.forEach(k => {
+          const used = got.includes(k.ch), hit = W.includes(k.ch);
+          k.r.setAttribute('fill', used && hit ? YC : 'var(--surface)'); k.r.setAttribute('stroke', used && hit ? YC : 'var(--border)');
+          k.t.setAttribute('fill', used && hit ? '#0a0a0f' : 'var(--text)'); op(k.g, used && !hit ? .25 : s === 0 ? pr(u, 900, 400) : 1);
+        });
+        // the 'A' press in step 3 is a wrong letter not on the small keyboard: just draw the stroke
+        parts.forEach((p, i) => p.setAttribute('stroke-dashoffset', i < wrongN ? 0 : p.dataset.l));
+        const won = s === 3 && u > 2700;
+        op(stamp, won ? pop(u, 2700) : 0); stamp.setAttribute('transform', won ? `rotate(-10 160 56)` : '');
+        runL.textContent = s === 3 ? (u > 2900 ? 'RUN 2' : 'RUN 1') : '';
+      };
+    }
+  };
+  const HT = CinefiedHowTo.create($('howto'), HOWTO);
+  const openRules = () => { $('rulesSheet').classList.add('open'); $('scrim').classList.add('open'); HT.play(); };
+  const closeRules = () => { HT.stop(); $('rulesSheet').classList.remove('open'); $('scrim').classList.remove('open'); };
+  // every time the game is opened, the how-to-play plays first
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => { if ($('s-home').classList.contains('on')) openRules(); }, 450));
+
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#startBtn') || t.closest('#againBtn')) { run = 0; show('s-play'); grab(); return play(); }
+    if (t.closest('#nextBtn')) return play();
+    if (t.closest('#stopBtn') || t.closest('#quitBtn')) { drop(); run = 0; stats(); return show('s-home'); }
+    if (t.closest('#homeBtn')) return void history.back();
+    if (t.closest('[data-rules]')) return openRules();
+    if (t.closest('#scrim') || t.closest('#rulesSheet [data-close]')) return closeRules();
+  });
+  addEventListener('keydown', e => { if (e.key === 'Enter' && $('s-play').classList.contains('on')) { const b = $('nextBtn') || $('againBtn'); if (b && !$('after').hidden) b.click(); } });
+  stats();
+})();
+</script>
+</body>
+</html>

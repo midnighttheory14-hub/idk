@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Who's More Likely · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  /* Who's More Likely game screens. Entry page and waiting room come from the core. Every screen fits the phone. */
+  :root{--c:var(--blue)}
+  [hidden]{display:none!important}
+  #game{display:none}
+  #game.on{display:block}
+  #game .gs{display:none;height:100vh;height:100dvh;overflow:hidden;flex-direction:column;
+      padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
+  #game .gs.on{display:flex}
+  #game .gs.in{animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  .l-mid{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1;min-width:0;padding:0 6px}
+  .l-mid b{font-family:var(--display);font-weight:400;font-size:19px;letter-spacing:2.5px}
+  .l-mid small{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .l-mid b{white-space:nowrap}
+  .who{display:flex;align-items:center;flex:none;padding-left:7px}
+  .who .pfp{width:24px;height:24px;font-size:11px;margin-left:-7px;box-shadow:0 0 0 2px var(--bg);opacity:.4}
+  .who .pfp.ok{opacity:1}
+  .pfp{position:relative}
+
+  /* the question */
+  .q{flex:none;text-align:center;margin:clamp(6px,2dvh,20px) 0 clamp(8px,2dvh,18px)}
+  .q .tag{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:5px 11px;background:var(--surface)}
+  .q small{display:block;font-family:var(--display);font-size:clamp(18px,3dvh,22px);letter-spacing:3px;color:var(--c);margin-top:clamp(8px,1.6dvh,14px)}
+  .q h1{font-family:var(--display);font-weight:400;font-size:clamp(26px,min(8.6vw,5.2dvh),40px);letter-spacing:1px;line-height:1.05;margin-top:4px;text-wrap:balance}
+
+  /* players to vote for */
+  .grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,1fr);grid-auto-rows:minmax(0,1fr);gap:clamp(8px,1.4dvh,12px);max-height:52dvh}
+  .grid.many{grid-template-columns:repeat(3,1fr)}
+  .pc{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(4px,.9dvh,8px);min-height:0;min-width:0;border-radius:18px;border:1.5px solid var(--border);
+      background:var(--surface);color:var(--text);cursor:pointer;font-family:var(--mono);font-size:13px;position:relative;box-shadow:var(--lift);transition:border-color .2s,transform .15s,background .2s;padding:6px}
+  .pc:active{transform:scale(.97)}
+  .pc .pfp{width:clamp(34px,7dvh,58px);height:clamp(34px,7dvh,58px);font-size:clamp(16px,3.2dvh,26px)}
+  .pc span.nm{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pc small{font-size:9.5px;color:var(--muted);letter-spacing:1px}
+  .pc.sel{border-color:var(--c);background:color-mix(in srgb,var(--c) 12%,var(--surface))}
+  .pc.sel::after{content:"YOUR VOTE";position:absolute;top:8px;right:10px;font-size:8.5px;letter-spacing:1.5px;color:var(--c)}
+  .count{flex:none;text-align:center;font-size:11.5px;color:var(--muted);margin-top:clamp(8px,1.6dvh,14px)}
+  .count b{color:var(--text);font-weight:500}
+
+  /* results */
+  .rq{flex:none;text-align:center;font-size:12px;color:var(--muted);line-height:1.5;margin-top:clamp(2px,1dvh,8px)}
+  .rq b{color:var(--text);font-weight:500}
+  .champ{flex:none;display:flex;flex-direction:column;align-items:center;gap:clamp(4px,1dvh,8px);margin:clamp(8px,2dvh,18px) 0 clamp(8px,1.8dvh,16px);text-align:center}
+  .champ .faces{display:flex;gap:10px}
+  .champ .pfp{width:clamp(64px,13dvh,104px);height:clamp(64px,13dvh,104px);font-size:clamp(28px,6dvh,48px);box-shadow:0 0 0 4px var(--bg),0 0 0 6px var(--c),0 0 40px color-mix(in srgb,var(--c) 45%,transparent);animation:pop .5s cubic-bezier(.2,1.5,.4,1)}
+  .champ .faces.two .pfp{width:clamp(52px,10dvh,80px);height:clamp(52px,10dvh,80px);font-size:clamp(22px,4.6dvh,36px)}
+  .champ h1{font-family:var(--display);font-weight:400;font-size:clamp(34px,7dvh,56px);letter-spacing:3px;line-height:.95}
+  .champ p{font-size:12px;color:var(--muted)}
+  .bars{flex:1;min-height:0;display:flex;flex-direction:column;gap:clamp(5px,1dvh,8px);overflow:hidden}
+  .vbar{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;font-size:12.5px;min-height:0}
+  .vbar .pfp{width:clamp(24px,4dvh,32px);height:clamp(24px,4dvh,32px);font-size:clamp(11px,1.9dvh,14px)}
+  .track{position:relative;height:clamp(24px,4dvh,32px);border-radius:10px;background:var(--surface);border:1px solid var(--border);overflow:hidden;display:flex;align-items:center}
+  .fill{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--c) 28%,transparent);border-right:2px solid var(--c);transition:width .7s cubic-bezier(.2,.7,.2,1)}
+  .vbar.top .fill{background:color-mix(in srgb,var(--c) 45%,transparent)}
+  .track .nm{position:relative;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .track .vs{position:relative;margin-left:auto;display:flex;padding-right:6px}
+  .track .vs i{width:clamp(16px,2.6dvh,20px);height:clamp(16px,2.6dvh,20px);border-radius:50%;margin-left:-5px;display:grid;place-items:center;font-style:normal;font-family:var(--display);
+               font-size:10px;color:var(--bg);box-shadow:0 0 0 2px var(--surface)}
+  .vbar .n{font-family:var(--display);font-size:clamp(18px,3dvh,22px);min-width:18px;text-align:right}
+  .vbar.zero{opacity:.45}
+  .bars.many{gap:4px}
+  #g-res.many .champ{margin:clamp(4px,1.2dvh,12px) 0 clamp(6px,1.2dvh,12px)}
+  #g-res.many .champ .pfp{width:clamp(48px,9dvh,90px);height:clamp(48px,9dvh,90px);font-size:clamp(22px,4.2dvh,40px)}
+  #g-res.many .champ h1{font-size:clamp(30px,6dvh,52px)}
+  .bars.many .track{height:clamp(20px,3.2dvh,28px)}
+  .bars.many .vbar .pfp{width:clamp(20px,3.2dvh,28px);height:clamp(20px,3.2dvh,28px);font-size:10px}
+  .bars.many .vbar .n{font-size:clamp(15px,2.4dvh,20px)}
+  .bars.many .track .vs i{width:15px;height:15px;font-size:9px}
+  .self{flex:none;text-align:center;font-size:11px;color:var(--muted);margin-top:clamp(6px,1.2dvh,10px)}
+  .bottom{flex:none;display:grid;gap:10px;margin-top:clamp(10px,2dvh,18px)}
+  .gwait{text-align:center;font-size:12.5px;color:var(--muted);padding:12px 0}
+  .gwait::after{content:"";animation:dots 1.4s steps(4) infinite}
+  @media (prefers-reduced-motion:reduce){#game .gs.in,.champ .pfp,.fill{animation:none;transition:none}}
+
+  #leaveSheet p{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="app" id="game">
+  <!-- 1. VOTE -->
+  <section class="gs" id="g-vote">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="l-mid"><b class="qno"></b><small>Tap to vote</small></div>
+      <div class="who" id="who"></div>
+    </div>
+    <div class="q"><span class="tag" id="qtag"></span><small>WHO'S MORE LIKELY TO…</small><h1 id="qtext"></h1></div>
+    <div class="grid" id="grid"></div>
+    <p class="count" id="count"></p>
+  </section>
+
+  <!-- 2. RESULTS -->
+  <section class="gs" id="g-res">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="l-mid"><b class="qno"></b><small id="resMode"></small></div>
+      <span style="width:40px"></span>
+    </div>
+    <p class="rq">Who's more likely to <b id="rqtext"></b>?</p>
+    <div class="champ" id="champ"></div>
+    <div class="bars" id="bars"></div>
+    <p class="self" id="self"></p>
+    <div class="bottom" id="bottom"></div>
+  </section>
+</div>
+
+<div class="scrim" id="gScrim"></div>
+<section class="sheet" id="leaveSheet" aria-label="Leave"><div class="grab"></div><h3>LEAVE THE GAME?</h3>
+  <p>The others keep playing. You can join again between questions with the room code.</p>
+  <div class="two"><button class="btn outline" type="button" data-stay>STAY</button><button class="btn" type="button" id="leaveYes">LEAVE</button></div></section>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="data/likely-questions.js"></script>
+<script src="core/core.js?v=0.2.1"></script>
+<script src="core/howto.js?v=0.2.0"></script>
+<script src="core/core-ui.js?v=0.2.3"></script>
+<script>
+(() => {
+  'use strict';
+  const C = Cinefied, UI = CinefiedUI, esc = C.esc;
+  const $ = id => document.getElementById(id);
+  const game = $('game');
+  const Q = window.LikelyQuestions;
+
+  let V = null, shown = null, code = null, advancing = null, drawnRes = null;
+
+  // ── helpers over the room ──
+  const st = () => (V && V.room.state) || {};
+  const ph = () => (V ? V.room.phase : null);
+  const P = u => V.room.players[u];
+  const nameOf = u => (P(u) && P(u).name) || (st().names || {})[u] || 'Player';
+  const isMe = u => V && u === V.me;
+  const online = () => V.players.filter(p => p.online !== false);
+  const secret = () => (V.room.settings || {}).votes === 'Secret';
+  const av = (u, cls) => `<span class="pfp${cls ? ' ' + cls : ''}" style="--pc:${isMe(u) ? 'linear-gradient(135deg,var(--accent),var(--accent2))' : UI.avColor(u)}">${UI.initial(nameOf(u))}</span>`;
+  const voteOf = u => { const v = P(u) && P(u).vote; const pre = (st().qn || 1) + ':'; return v && v.startsWith(pre) ? v.slice(pre.length) : null; };
+
+  function show(id) {
+    if (shown === id) return;
+    shown = id;
+    document.querySelectorAll('#game .gs').forEach(s => { s.className = 'gs' + (s.id === id ? ' on in' : ''); });
+  }
+  function setHTML(el, html) { if (el.dataset.h !== html) { el.dataset.h = html; el.innerHTML = html; } }
+
+  // ── the next question (never repeats until the list runs out) ──
+  function nextQuestion(v, prev) {
+    const mode = (v.room.settings || {}).questions || 'Mixed';
+    const pool = [];
+    if (mode !== 'Life') Q.movies.forEach((t, i) => pool.push({ k: 'm' + i, t, kind: 'movies' }));
+    if (mode !== 'Movies') Q.life.forEach((t, i) => pool.push({ k: 'l' + i, t, kind: 'life' }));
+    let used = Object.assign({}, prev && prev.used);
+    let left = pool.filter(p => !used[p.k]);
+    if (!left.length) { used = {}; left = pool; }
+    const q = left[Math.floor(Math.random() * left.length)];
+    used[q.k] = true;
+    return { qn: ((prev && prev.qn) || 0) + 1, q: q.t, kind: q.kind, used };
+  }
+
+  // ══ screens ══════════════════════════════════════════════════
+  function drawVote() {
+    const s = st(), ps = V.players, mine = voteOf(V.me);
+    document.querySelectorAll('#game .qno').forEach(e => { e.textContent = 'QUESTION ' + (s.qn || 1); });
+    $('qtag').textContent = s.kind === 'movies' ? '🎬 Movies' : '😄 Life';
+    $('qtext').textContent = s.q || '';
+    $('grid').className = 'grid' + (ps.length > 6 ? ' many' : '');
+    setHTML($('grid'), ps.map(p => `<button class="pc${mine === p.uid ? ' sel' : ''}" type="button" data-pick="${C.sid(p.uid)}">${av(p.uid)}<span class="nm">${isMe(p.uid) ? 'You' : esc(p.name)}</span>${isMe(p.uid) ? '<small>yourself</small>' : ''}</button>`).join(''));
+    const ons = online(), n = ons.filter(p => voteOf(p.uid)).length;
+    $('count').innerHTML = `<b>${n}</b> of ${ons.length} voted`;
+    setHTML($('who'), ons.slice(0, 5).map(p => av(p.uid, voteOf(p.uid) ? 'ok' : '')).join('') +
+      (ons.length > 5 ? `<span class="pfp ok" style="--pc:var(--surface2);color:var(--muted);font-family:var(--mono);font-size:9px">+${ons.length - 5}</span>` : ''));
+  }
+  function drawRes() {
+    const s = st(), f = s.final || {}, hide = s.secret;
+    document.querySelectorAll('#game .qno').forEach(e => { e.textContent = 'QUESTION ' + (s.qn || 1); });
+    $('rqtext').textContent = s.q || '';
+    $('resMode').textContent = hide ? 'Secret votes' : 'Open votes';
+    // everyone who was in the vote, plus anyone who got a vote
+    const ids = [...new Set([...Object.keys(f), ...Object.values(f)])];
+    const tally = {}; ids.forEach(u => { tally[u] = Object.keys(f).filter(v => f[v] === u); });
+    const max = Math.max(0, ...ids.map(u => tally[u].length));
+    const tops = ids.filter(u => tally[u].length === max && max > 0);
+    const nm = u => (isMe(u) ? 'YOU' : nameOf(u).toUpperCase());
+    const total = Object.keys(f).length;
+    const key = s.qn + ':' + JSON.stringify(f) + hide;
+    if (drawnRes !== key) {
+      drawnRes = key;
+      $('champ').innerHTML = `<div class="faces${tops.length > 1 ? ' two' : ''}">${tops.slice(0, 3).map(u => av(u)).join('')}</div>
+        <h1>${tops.length > 1 ? "IT'S A TIE" : esc(nm(tops[0] || ''))}</h1><p>${tops.length > 1 ? `${tops.map(u => esc(nm(u))).join(' & ')} · ${max} votes each` : `${max} of ${total} votes`}</p>`;
+      const order = ids.slice().sort((a, b) => tally[b].length - tally[a].length);
+      $('bars').className = 'bars' + (order.length > 6 ? ' many' : '');
+      $('g-res').classList.toggle('many', order.length > 6);
+      $('bars').innerHTML = order.map(u => {
+        const n = tally[u].length, pct = total ? n / total * 100 : 0;
+        const vs = hide ? '' : `<span class="vs">${tally[u].map(v => `<i style="background:${isMe(v) ? 'var(--accent2)' : UI.avColor(v)}" title="${esc(nameOf(v))}">${UI.initial(nameOf(v))}</i>`).join('')}</span>`;
+        return `<div class="vbar${tops.includes(u) ? ' top' : ''}${n ? '' : ' zero'}">${av(u)}<div class="track"><div class="fill" style="width:0" data-w="${pct}"></div><span class="nm">${isMe(u) ? 'You' : esc(nameOf(u))}</span>${vs}</div><span class="n">${n}</span></div>`;
+      }).join('');
+      requestAnimationFrame(() => requestAnimationFrame(() => document.querySelectorAll('#bars .fill').forEach(x => { x.style.width = x.dataset.w + '%'; })));
+      const selfers = hide ? [] : Object.keys(f).filter(v => f[v] === v);
+      $('self').textContent = selfers.length ? `🙋 ${selfers.map(u => (isMe(u) ? 'You' : nameOf(u))).join(', ')} voted for ${selfers.length === 1 && isMe(selfers[0]) ? 'yourself' : 'themselves'}` : '';
+    }
+    const L = P(V.room.leader);
+    setHTML($('bottom'), V.isLeader
+      ? '<button class="btn" type="button" data-do="next">NEXT QUESTION</button><button class="btn outline" type="button" data-do="end">END GAME</button>'
+      : `<p class="gwait">Waiting for ${esc(L ? L.name : 'the leader')} to pick the next question</p>`);
+  }
+  function render() {
+    if (!V || !V.room.state) return;
+    const p = ph();
+    if (p === 'vote') { drawVote(); show('g-vote'); }
+    else if (p === 'results') { drawRes(); show('g-res'); }
+    advance();
+  }
+
+  // ══ the leader's phone moves the game along ═════════════════
+  function advance() {
+    if (!V.isLeader || ph() !== 'vote') return;
+    const ons = online(), key = st().qn;
+    if (advancing === key || !ons.length || !ons.every(p => voteOf(p.uid))) return;
+    const final = {}; ons.forEach(p => { final[p.uid] = voteOf(p.uid); });
+    advancing = key;
+    // results are a snapshot, so people leaving afterwards don't change them; between questions new players may join
+    firebase.database().ref('rooms/' + code).update({ phase: 'results', open: true, 'state/final': final, 'state/secret': secret() })
+      .catch(() => { advancing = null; });
+  }
+
+  // ══ touches ══════════════════════════════════════════════════
+  const closeLeave = () => { $('leaveSheet').classList.remove('open'); $('gScrim').classList.remove('open'); };
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#gScrim') || t.closest('[data-stay]')) return closeLeave();
+    if (t.closest('#leaveYes')) { closeLeave(); return void UI.leaveGame(); }
+    if (!t.closest('#game') || !V) return;
+    if (t.closest('[data-leave]')) { $('leaveSheet').classList.add('open'); $('gScrim').classList.add('open'); return; }
+    const pick = t.closest('[data-pick]');
+    if (pick && ph() === 'vote') {
+      const u = V.players.find(p => C.sid(p.uid) === pick.dataset.pick);
+      if (u) C.updateMe({ vote: `${st().qn || 1}:${u.uid}` }).catch(() => UI.say("Your vote didn't go through"));
+      return;
+    }
+    const d = t.closest('[data-do]');
+    if (d && d.dataset.do === 'next') {
+      const s = st();
+      return void firebase.database().ref('rooms/' + code).update({ phase: 'vote', open: false, state: nextQuestion(V, s) }).catch(err => UI.say(C.message(err)));
+    }
+    if (d && d.dataset.do === 'end') return void firebase.database().ref('rooms/' + code).update({ phase: 'waiting', open: false, state: null }).catch(err => UI.say(C.message(err)));
+  });
+
+  // ══ hand-off with the core ═══════════════════════════════════
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = {
+    steps: [
+      { d: 3000, t: "A question appears: \"Who's more likely to…\"" },
+      { d: 5000, t: 'Everyone votes for the player who fits it best. You can even vote for yourself, and change your vote until everyone has voted.' },
+      { d: 3800, t: 'Then the results show who the group picked. It goes on until the leader ends the game.' }
+    ],
+    build(svg, K) {
+      const { el, op, cl, pr, ease, back, lerp, fitLines, Phone, Player, Chip, Label, WidePill, Ripple, COLORS } = K;
+      const card = el('g', { opacity: 0 }, svg);
+      el('rect', { x: 50, y: 22, width: 220, height: 82, rx: 14, fill: 'var(--surface)', stroke: 'var(--border)', 'stroke-width': 1.5 }, card);
+      const qa = Label(svg, 'm'), q1 = Label(svg), q2 = Label(svg);
+      const X = [52, 124, 196, 268], Y = 176;
+      const pl = el('g', {}, svg), P = X.map((x, i) => Player(pl, x, Y, 'RSBA'[i], COLORS[i]));
+      // each vote is a dot in the voter's colour that flies to the player they pick
+      const dots = X.map((x, i) => el('circle', { r: 5, fill: COLORS[i], stroke: 'var(--surface2)', 'stroke-width': 1.5, opacity: 0 }, svg));
+      const me = Chip(svg), res = Chip(svg), tap = Ripple(svg);
+      const pop = (u, a) => back(pr(u, a, 260));
+      // votes: [voter, first pick, final pick, time]
+      const V = [[0, 2, 2, 400], [1, 2, 2, 1000], [2, 2, 2, 1600], [3, 1, 2, 2200]];
+      const slot = (target, n) => [X[target] - 15 + 10 * n, Y - 30];
+      const fly = (d, from, to, k) => { const e = ease(k), x = lerp(from[0], to[0], e), y = lerp(from[1], to[1], e) - 26 * Math.sin(Math.PI * e); d.setAttribute('cx', x.toFixed(1)); d.setAttribute('cy', y.toFixed(1)); op(d, k > 0 ? 1 : 0); };
+      return (s, u) => {
+        me.hide(); res.hide(); tap.set(0, 0, 0); dots.forEach(d => op(d, 0)); P.forEach(p => p.set());
+        const k = s === 0 ? pr(u, 0, 400) : 1;
+        op(card, k);
+        qa.set("WHO'S MORE LIKELY TO", 160, 46, 8.5, 'var(--muted)', { o: k });
+        q1.set('WHISTLE THE LOUDEST', 160, 68, 20, 'var(--text)', { o: s === 0 ? pr(u, 500, 300) : 1, maxW: 190 });
+        q2.set('IN THE THEATRE?', 160, 88, 20, 'var(--text)', { o: s === 0 ? pr(u, 700, 300) : 1, maxW: 190 });
+        if (s === 1) {
+          V.forEach(([v, first, last, a], n) => {
+            const from = [X[v], Y], k1 = pr(u, a, 500);
+            if (u < a) return;
+            P[v].set({ ring: k1 < 1 ? 1 : 0 });
+            if (v === 3 && u > 3300) fly(dots[v], slot(first, 3), slot(last, 3), pr(u, 3300, 600));
+            else fly(dots[v], from, slot(first, n), k1);
+          });
+          if (u > 1700) me.set('Me!', X[2], 222, pop(u, 1700));
+          if (u > 2900 && u < 3300) me.set('Changed my mind', X[3] - 20, 222, pop(u, 2900));
+          if (u >= 3300) me.set('Changed my mind', X[3] - 20, 222, 1);
+        } else if (s === 2) {
+          V.forEach(([v, , last], n) => { const [x, y] = slot(last, n); dots[v].setAttribute('cx', x); dots[v].setAttribute('cy', y); op(dots[v], 1); });
+          const g = pr(u, 300, 500);
+          P[2].set({ s: 1 + .25 * back(g), ring: g, ringC: 'var(--blue)' });
+          P.forEach((p, i) => { if (i !== 2) p.set({ o: 1 - .55 * g }); });
+          if (u > 900) res.set('B · 4 votes', X[2], 222, pop(u, 900), 'ok');
+        }
+      };
+    }
+  };
+
+  UI.mount({
+    game: {
+      howto: HOWTO,
+      id: 'likely', name: "Who's More Likely", shelf: 'Play together', color: 'var(--blue)', glyph: 'W',
+      pitch: 'A question about the group. Everyone votes. The truth comes out.',
+      facts: ['3 to 8 players', 'Each on own phone', 'Endless'],
+      rules: ["A question appears: \"Who's more likely to…\"",
+              'Everyone votes for the player who fits it best. You can even vote for yourself.',
+              'You can change your vote until everyone has voted. Then the results show who the group picked.',
+              "With open votes everyone sees who voted for whom. With secret votes only the counts are shown. It goes on until the leader ends the game."],
+      min: 3, max: 8,
+      settings: [
+        { key: 'votes', label: 'Votes', options: ['Open', 'Secret'], default: 'Open', summary: v => (v === 'Secret' ? 'Secret votes' : 'Open votes') },
+        { key: 'questions', label: 'Questions', options: ['Mixed', 'Movies', 'Life'], default: 'Mixed', summary: v => (v === 'Mixed' ? 'Movie + life questions' : v === 'Movies' ? 'Movie questions' : 'Life questions') },
+      ],
+      startPhase: 'vote',
+      startState: v => nextQuestion(v, null),
+    },
+    gameNames: { pictionary: 'Pictionary', imposter: 'Imposter', tictactoe: 'Tic Tac Toe', tierd: "Tier'd", likely: "Who's More Likely" },
+    onStart: v => { V = v; code = v.code; shown = null; advancing = null; drawnRes = null; game.classList.add('on'); render(); },
+    onUpdate: v => { V = v; code = v.code; render(); },
+    onLobby: () => { V = null; shown = null; closeLeave(); game.classList.remove('on'); },
+  });
+})();
+</script>
+</body>
+</html>

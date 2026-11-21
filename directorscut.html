@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Director's Cut · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  /* Director's Cut (Guess the Director): one phone. Three movies by one director appear; everyone shouts the director. */
+  :root{--c:var(--accent)}
+  [hidden]{display:none!important}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{touch-action:manipulation}
+  .gs{display:none;position:fixed;inset:0;flex-direction:column;
+      padding:calc(10px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
+  .gs.on{display:flex;animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  .wrap{flex:1;min-height:0;display:flex;flex-direction:column;max-width:460px;width:100%;margin:0 auto}
+  .go{background:var(--c);color:#fff;box-shadow:0 10px 26px color-mix(in srgb,var(--c) 35%,transparent)}
+  .aka{font-family:var(--display);font-size:clamp(20px,3.4dvh,26px);letter-spacing:3px;color:var(--c);line-height:1;margin:2px 0 10px;position:relative}
+
+  /* playing: the credits block of a film poster, quiet and tight */
+  #s-play{background:radial-gradient(70% 45% at 20% 10%,color-mix(in srgb,var(--c) 10%,transparent),transparent 70%),var(--bg)}
+  .top{display:flex;justify-content:space-between;align-items:center;min-height:42px}
+  .top small{font-size:11px;letter-spacing:2px;color:var(--muted)}
+  .stage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(14px,3dvh,28px);max-width:760px;width:100%;margin:0 auto;padding-bottom:8px}
+  .lbl{font-size:11px;letter-spacing:4px;color:var(--muted)}
+  .lbl i{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c);margin-right:10px;vertical-align:1px}
+  .bill{display:flex;flex-direction:column;align-items:center;width:100%}
+  .bill b{display:block;font-family:var(--display);font-weight:400;letter-spacing:1.5px;line-height:.95;color:var(--text);text-wrap:balance;overflow-wrap:normal;word-break:normal;max-width:100%}
+  .bill .sep{width:5px;height:5px;border-radius:50%;background:var(--c);opacity:.7;margin:clamp(10px,2.2dvh,18px) 0}
+  .bill.in > *{animation:crIn .5s cubic-bezier(.2,.7,.2,1) both}
+  .bill.in > :nth-child(2){animation-delay:.08s} .bill.in > :nth-child(3){animation-delay:.14s} .bill.in > :nth-child(n+4){animation-delay:.22s}
+  @keyframes crIn{from{opacity:0;transform:translateY(10px)}}
+  /* the answer slot: SHOW ANSWER turns into the answer, softly */
+  .slot{display:grid;place-items:center;width:100%;min-height:clamp(64px,12dvh,100px)}
+  .slot > *{grid-area:1/1;transition:opacity .55s ease,transform .55s cubic-bezier(.2,.8,.2,1),filter .55s ease}
+  .show{border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--mono);font-size:12px;letter-spacing:3px;padding:12px 24px;border-radius:999px;cursor:pointer;box-shadow:var(--lift)}
+  .show:active{transform:scale(.96)}
+  .ans{font-family:var(--display);font-weight:400;font-size:clamp(30px,min(9vw,8dvh),60px);letter-spacing:2px;line-height:1;color:var(--text);
+       background:color-mix(in srgb,var(--c) 10%,var(--surface));border:1.5px solid var(--c);border-radius:18px;padding:10px 26px 8px;max-width:100%;
+       box-shadow:0 10px 30px color-mix(in srgb,var(--c) 22%,transparent);opacity:0;transform:translateY(14px) scale(.94);filter:blur(8px);pointer-events:none;text-wrap:balance}
+  .slot.open .show{opacity:0;transform:translateY(-10px) scale(.96);pointer-events:none}
+  .slot.open .ans{opacity:1;transform:none;filter:none}
+  .next{width:min(320px,100%);margin:0 auto}
+  @media (orientation:landscape) and (max-height:500px){.stage{gap:8px}.next{width:min(260px,50%)}.cr{padding:4px 0}}
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- 1. ENTRY -->
+  <section class="gs on" id="s-home">
+    <div class="bar">
+      <button class="icon-btn" type="button" id="homeBtn" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="chipbtn" type="button" data-rules>How to play</button>
+    </div>
+    <div class="wrap">
+      <div class="hero">
+        <div class="glyph" aria-hidden="true">D</div>
+        <div class="kind"><i></i>Pass one phone</div>
+        <h1>DIRECTOR'S CUT</h1>
+        <div class="aka">GUESS THE DIRECTOR</div>
+        <p>Three movies, one director. Read them out and let everyone shout who made them.</p>
+        <div class="facts"><span class="fact">1 phone</span><span class="fact">Any number</span><span class="fact">No timer</span></div>
+      </div>
+      <button class="btn go" type="button" id="startBtn">START</button>
+    </div>
+  </section>
+
+  <!-- 2. THE CAST -->
+  <section class="gs" id="s-play">
+    <div class="top">
+      <small id="count"></small>
+      <button class="icon-btn" type="button" id="stopBtn" aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="stage">
+      <div class="lbl"><i></i>WHO DIRECTED THESE?</div>
+      <div class="bill" id="bill">
+        <b id="f0"></b>
+        <span class="sep"></span>
+        <b id="f1"></b>
+        <span class="sep"></span>
+        <b id="f2"></b>
+      </div>
+      <div class="slot" id="slot">
+        <button class="show" type="button" id="showBtn">SHOW ANSWER</button>
+        <div class="ans" id="ans"></div>
+      </div>
+    </div>
+    <button class="btn go next" type="button" id="nextBtn">NEXT</button>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet ht-sheet" id="rulesSheet" aria-label="How to play"><div class="grab"></div><div id="howto"></div></section>
+
+<script src="core/howto.js?v=0.2.0"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  // ═════════════ DIRECTORS (edit here: d = director, f = their movies; each round shows 3 of them at random) ═════════════
+  // A movie must belong to only one director here, and every director needs at least 3 movies.
+  const DIRECTORS = [
+    { d: "S. S. Rajamouli", f: ["Student No. 1", "Simhadri", "Sye", "Chatrapathi", "Vikramarkudu", "Yamadonga", "Magadheera", "Maryada Ramanna", "Eega", "Baahubali: The Beginning", "Baahubali 2: The Conclusion", "RRR"] },
+    { d: "Trivikram Srinivas", f: ["Nuvve Nuvve", "Athadu", "Jalsa", "Khaleja", "Julayi", "Attarintiki Daredi", "S/O Satyamurthy", "A Aa", "Agnyaathavaasi", "Aravinda Sametha Veera Raghava", "Ala Vaikunthapurramuloo", "Guntur Kaaram"] },
+    { d: "Sukumar", f: ["Arya", "Jagadam", "Arya 2", "100% Love", "1: Nenokkadine", "Nannaku Prematho", "Rangasthalam", "Pushpa: The Rise", "Pushpa 2: The Rule"] },
+    { d: "Puri Jagannadh", f: ["Badri", "Itlu Sravani Subramanyam", "Idiot", "Amma Nanna O Tamila Ammayi", "Shivamani", "Pokiri", "Desamuduru", "Chirutha", "Businessman", "Temper", "iSmart Shankar", "Liger"] },
+    { d: "Koratala Siva", f: ["Mirchi", "Srimanthudu", "Janatha Garage", "Bharat Ane Nenu", "Acharya", "Devara: Part 1"] },
+    { d: "Boyapati Srinu", f: ["Bhadra", "Tulasi", "Simha", "Legend", "Sarrainodu", "Jaya Janaki Nayaka", "Vinaya Vidheya Rama", "Akhanda"] },
+    { d: "Sreenu Vaitla", f: ["Anandam", "Venky", "Dhee", "Ready", "King", "Dookudu", "Baadshah", "Aagadu"] },
+    { d: "V. V. Vinayak", f: ["Aadi", "Chennakesava Reddy", "Dil", "Tagore", "Bunny", "Lakshmi", "Krishna", "Adhurs", "Naayak", "Khaidi No. 150"] },
+    { d: "Sekhar Kammula", f: ["Anand", "Godavari", "Happy Days", "Leader", "Life Is Beautiful", "Fidaa", "Love Story", "Kuberaa"] },
+    { d: "Krish Jagarlamudi", f: ["Gamyam", "Vedam", "Krishnam Vande Jagadgurum", "Kanche", "Gautamiputra Satakarni", "Kondapolam"] },
+    { d: "Nag Ashwin", f: ["Yevade Subramanyam", "Mahanati", "Kalki 2898 AD"] },
+    { d: "Anil Ravipudi", f: ["Pataas", "Supreme", "Raja the Great", "F2: Fun and Frustration", "Sarileru Neekevvaru", "F3: Fun and Frustration", "Bhagavanth Kesari", "Sankranthiki Vasthunam"] },
+    { d: "Harish Shankar", f: ["Shock", "Mirapakay", "Gabbar Singh", "Ramayya Vasthavayya", "Subramanyam for Sale", "Duvvada Jagannadham", "Gaddalakonda Ganesh", "Mr. Bachchan"] },
+    { d: "Vamshi Paidipally", f: ["Munna", "Brindavanam", "Yevadu", "Oopiri", "Maharshi", "Varisu"] },
+    { d: "Gunasekhar", f: ["Choodalani Vundi", "Okkadu", "Arjun", "Sainikudu", "Rudhramadevi", "Shaakuntalam"] },
+    { d: "Surender Reddy", f: ["Athanokkade", "Ashok", "Athidhi", "Kick", "Oosaravelli", "Race Gurram", "Kick 2", "Dhruva", "Sye Raa Narasimha Reddy", "Agent"] },
+    { d: "Gopichand Malineni", f: ["Don Seenu", "Balupu", "Pandaga Chesko", "Winner", "Krack", "Veera Simha Reddy"] },
+    { d: "Parasuram", f: ["Solo", "Sarocharu", "Srirastu Subhamastu", "Geetha Govindam", "Sarkaru Vaari Paata", "Family Star"] },
+    { d: "Maruthi", f: ["Ee Rojullo", "Bus Stop", "Bhale Bhale Magadivoy", "Babu Bangaram", "Mahanubhavudu", "Prati Roju Pandage"] },
+    { d: "Venky Atluri", f: ["Tholi Prema (2018)", "Mr. Majnu", "Rang De", "Sir", "Lucky Baskhar"] },
+    { d: "Sandeep Reddy Vanga", f: ["Arjun Reddy", "Kabir Singh", "Animal"] },
+    { d: "Prashanth Neel", f: ["Ugramm", "KGF: Chapter 1", "KGF: Chapter 2", "Salaar: Part 1 – Ceasefire"] },
+    { d: "Ram Gopal Varma", f: ["Shiva", "Kshana Kshanam", "Gaayam", "Anaganaga Oka Roju", "Satya", "Rangeela", "Company"] },
+    { d: "K. Raghavendra Rao", f: ["Adavi Ramudu", "Jagadeka Veerudu Athiloka Sundari", "Gharana Mogudu", "Pelli Sandadi", "Annamayya", "Sri Ramadasu"] },
+    { d: "Krishna Vamsi", f: ["Gulabi", "Ninne Pelladata", "Sindhooram", "Murari", "Khadgam", "Chandamama"] },
+    { d: "Teja", f: ["Chitram", "Nuvvu Nenu", "Jayam", "Nene Raju Nene Mantri"] },
+    { d: "Srikanth Addala", f: ["Kotha Bangaru Lokam", "Seethamma Vakitlo Sirimalle Chettu", "Mukunda", "Brahmotsavam", "Narappa"] },
+    { d: "Hanu Raghavapudi", f: ["Andala Rakshasi", "Krishna Gaadi Veera Prema Gaadha", "Padi Padi Leche Manasu", "Sita Ramam"] },
+    { d: "Shiva Nirvana", f: ["Ninnu Kori", "Majili", "Tuck Jagadish", "Kushi (2023)"] },
+    { d: "Prasanth Varma", f: ["Awe!", "Kalki (2019)", "Zombie Reddy", "Hanu-Man"] },
+    { d: "Chandoo Mondeti", f: ["Karthikeya", "Premam (2016)", "Savyasachi", "Karthikeya 2", "Thandel"] },
+    { d: "Ajay Bhupathi", f: ["RX 100", "Maha Samudram", "Mangalavaaram"] },
+    { d: "Bobby Kolli", f: ["Power", "Sardaar Gabbar Singh", "Jai Lava Kusa", "Venky Mama", "Waltair Veerayya", "Daaku Maharaaj"] },
+    { d: "Mohan Krishna Indraganti", f: ["Grahanam", "Ashta Chamma", "Golconda High School", "Gentleman", "Sammohanam", "V"] },
+    { d: "Gowtam Tinnanuri", f: ["Malli Raava", "Jersey", "Kingdom"] },
+    { d: "Vivek Athreya", f: ["Mental Madhilo", "Brochevarevarura", "Ante Sundaraniki", "Saripodhaa Sanivaaram"] },
+    { d: "Anudeep K. V.", f: ["Pittagoda", "Jathi Ratnalu", "Prince"] }
+  ];
+
+  // ── theme: follows the phone unless the player chose one in Profile ──
+  const sysDark = matchMedia('(prefers-color-scheme: dark)');
+  function theme() {
+    let pref = 'system'; try { pref = localStorage.getItem('cf_theme') || 'system'; } catch (e) {}
+    const t = pref === 'system' ? (sysDark.matches ? 'dark' : 'light') : pref;
+    document.documentElement.dataset.theme = t;
+    document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#f4f4f8' : '#0a0a0f';
+  }
+  theme(); sysDark.addEventListener('change', theme);
+
+  // ── no repeats until every movie has come up (remembered on this phone) ──
+  let used = []; try { used = JSON.parse(localStorage.getItem('cf_dircut_used') || '[]'); } catch (e) {}
+  let cur = null, played = 0, busy = false;
+  function nextMovie() {
+    if (used.length >= DIRECTORS.length) used = [];
+    const left = DIRECTORS.map((_, i) => i).filter(i => !used.includes(i));
+    const i = left[Math.floor(Math.random() * left.length)];
+    used.push(i); try { localStorage.setItem('cf_dircut_used', JSON.stringify(used)); } catch (e) {}
+    cur = DIRECTORS[i]; played++;
+    const f = cur.f.slice(); for (let k = f.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [f[k], f[j]] = [f[j], f[k]]; }
+    ['f0', 'f1', 'f2'].forEach((id, k) => { $(id).textContent = f[k]; });
+    const b = $('bill'); b.classList.remove('in'); void b.offsetWidth; b.classList.add('in');
+    $('slot').classList.remove('open'); $('ans').textContent = '';
+    $('count').textContent = 'ROUND ' + played;
+    fit();
+  }
+  function showAns() { $('ans').textContent = cur.d; $('slot').classList.add('open'); }
+  function onNext() {
+    if (busy) return;
+    if (cur && !$('slot').classList.contains('open')) { busy = true; showAns(); setTimeout(() => { busy = false; nextMovie(); }, 1500); }
+    else nextMovie();
+  }
+  // the names as big as fit: no word broken, nothing scrolls
+  function fit() {
+    const names = ['f0', 'f1', 'f2'].map($), stage = $('bill').parentElement;
+    let fs = Math.min(innerWidth * .13, innerHeight * .075, 72);
+    const set = () => names.forEach((n, k) => { n.style.fontSize = fs + 'px'; });
+    set();
+    while ((stage.scrollHeight > stage.clientHeight + 1 || names.some(n => n.scrollWidth > n.clientWidth + 1)) && fs > 18) { fs -= 2; set(); }
+  }
+  addEventListener('resize', () => { if ($('s-play').classList.contains('on')) fit(); });
+
+  function show(id) { document.querySelectorAll('#game .gs').forEach(s => s.classList.toggle('on', s.id === id)); }
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = CinefiedHowTo.templates.readGuess({
+    c: 'var(--accent)', t1: 'Press START. Three Telugu movies made by the same director appear.', t2: 'Read them out loud. Everyone shouts the director they think it is.',
+    head: 'GUESS THE DIRECTOR', gap: 15,
+    lines: [['MAGADHEERA', 'd', 13, '#fff'], ['EEGA', 'd', 13, '#fff'], ['BAAHUBALI', 'd', 13, '#fff']],
+    lines2: [['POKIRI', 'd', 13, '#fff'], ['BUSINESSMAN', 'd', 13, '#fff'], ['TEMPER', 'd', 13, '#fff']],
+    guesses: ['Sukumar?', 'Rajamouli!', 'Trivikram?'], mine: 'Puri?', right: 1, answer: 'RAJAMOULI'
+  });
+
+  const HT = CinefiedHowTo.create($('howto'), HOWTO);
+  const openSheet = () => { $('rulesSheet').classList.add('open'); $('scrim').classList.add('open'); HT.play(); };
+  const closeSheet = () => { HT.stop(); $('rulesSheet').classList.remove('open'); $('scrim').classList.remove('open'); };
+  // every time the game is opened, the how-to-play plays first
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => { if ($('s-home').classList.contains('on')) openSheet(); }, 450));
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#startBtn')) { played = 0; show('s-play'); return nextMovie(); }
+    if (t.closest('#showBtn')) return showAns();
+    if (t.closest('#nextBtn')) return onNext();
+    if (t.closest('#stopBtn')) return show('s-home');
+    if (t.closest('#homeBtn')) return void history.back();
+    if (t.closest('[data-rules]')) return openSheet();
+    if (t.closest('#scrim') || t.closest('[data-close]')) return closeSheet();
+  });
+})();
+</script>
+</body>
+</html>

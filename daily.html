@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0a0a0f">
+<title>Daily · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.1">
+<style>
+  /* Daily: the same five puzzles for everyone, new every midnight (India time). One try each. Streaks per puzzle. */
+  :root{--c:var(--accent);--maroon:#8e1f33;--maroonT:#d4566b}
+  [data-theme=light]{--maroon:#7a1a2c;--maroonT:#7a1a2c}
+  [hidden]{display:none!important}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{touch-action:manipulation}
+  .gs{display:none;position:fixed;inset:0;flex-direction:column;
+      padding:calc(10px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
+  .gs.on{display:flex;animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  .col{flex:1;min-height:0;display:flex;flex-direction:column;max-width:520px;width:100%;margin:0 auto}
+  .go{background:var(--k,var(--c));color:#fff;box-shadow:0 10px 26px color-mix(in srgb,var(--k,var(--c)) 30%,transparent)}
+  .lbl{font-size:11px;letter-spacing:4px;color:var(--muted)}
+  .lbl i{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--k,var(--c));margin-right:10px;vertical-align:1px}
+
+  /* ── today ── */
+  #s-today{background:radial-gradient(70% 40% at 15% 6%,color-mix(in srgb,var(--c) 9%,transparent),transparent 70%),var(--bg)}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:clamp(4px,1.4dvh,12px) 0 clamp(10px,2dvh,16px)}
+  .head h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,min(14vw,8dvh),68px);letter-spacing:3px;line-height:.85}
+  .head small{display:block;font-size:10.5px;letter-spacing:2.5px;color:var(--muted);text-align:right;line-height:1.7}
+  .head small b{font-weight:500;color:var(--text)}
+  .streak{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:clamp(10px,1.8dvh,14px) 16px;box-shadow:var(--lift)}
+  .streak .s{display:flex;align-items:center;gap:14px;min-width:0}
+  .streak .n{font-family:var(--display);font-size:clamp(40px,7dvh,52px);line-height:.85;color:var(--c)}
+  .streak .t{font-size:10.5px;letter-spacing:1px;line-height:1.5;color:var(--muted)}
+  .streak .t b{display:block;font-family:var(--display);font-weight:400;font-size:clamp(16px,4.6vw,19px);letter-spacing:1.2px;color:var(--text);white-space:nowrap}
+  .streak .s{gap:10px}
+  .marks{display:flex;align-items:center;gap:6px;margin-top:clamp(8px,1.4dvh,12px);padding-top:clamp(8px,1.4dvh,12px);border-top:1px solid var(--border)}
+  .marks i{flex:1;height:6px;border-radius:6px;background:var(--surface2);position:relative;overflow:hidden}
+  .marks i.on{background:var(--k)}
+  .marks small{flex:none;font-size:10px;letter-spacing:2px;color:var(--muted);margin-left:6px}
+  /* the puzzles as tiles: Higher or Lower across the top, the rest two by two; scrolls if the phone is short */
+  .list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(118px,auto);align-content:start;gap:10px;margin-top:clamp(10px,2dvh,16px);padding-bottom:4px}
+  .pz{display:flex;flex-direction:column;justify-content:space-between;gap:12px;min-width:0;text-align:left;cursor:pointer;color:var(--text);font:inherit;
+      background:color-mix(in srgb,var(--k) 7%,var(--surface));border:1px solid var(--border);border-radius:18px;padding:14px;box-shadow:var(--lift);position:relative;overflow:hidden}
+  .pz.wide{grid-column:1/-1;flex-direction:row;align-items:center;gap:14px}
+  .pz.wide .tx{flex:1}
+  .pz .row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .pz .g{font-family:var(--display);font-size:46px;line-height:.8;color:transparent;-webkit-text-stroke:1.2px var(--kt,var(--k))}
+  .pz .tx{min-width:0}
+  .pz .tx b{display:block;font-family:var(--display);font-weight:400;font-size:24px;letter-spacing:1.5px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pz .tx small{display:block;font-size:10.5px;color:var(--muted);margin-top:5px}
+  .pz .tx em{display:block;font-style:normal;font-size:9.5px;letter-spacing:2px;color:var(--kt,var(--k));margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pz .st{flex:none;font-family:var(--display);font-size:16px;letter-spacing:1.5px;padding:6px 12px 4px;border-radius:999px;background:var(--k);color:#fff}
+  .pz.done{cursor:default}
+  .pz.done .st{background:none;border:1.5px solid var(--border);color:var(--text);padding:5px 10px 3px;font-size:14px;letter-spacing:1px}
+  .pz.done.won .st{border-color:color-mix(in srgb,var(--green) 60%,transparent);color:var(--green)}
+  .pz.done.lost .st{color:var(--muted)}
+  .foot{display:flex;gap:10px;margin-top:clamp(10px,2dvh,16px)}
+  .foot .btn{flex:1}
+  .next{font-size:10.5px;letter-spacing:2px;color:var(--muted);text-align:center;margin-top:10px}
+  .next b{font-weight:500;color:var(--text);font-variant-numeric:tabular-nums}
+
+  /* ── a guess puzzle ── */
+  #s-guess{background:radial-gradient(70% 40% at 20% 8%,color-mix(in srgb,var(--k) 11%,transparent),transparent 70%),var(--bg)}
+  .gtop{display:flex;align-items:center;gap:12px;min-height:42px}
+  .gtop .ttl{flex:1;font-family:var(--display);font-size:22px;letter-spacing:2px;line-height:1}
+  .tries{display:flex;gap:6px}
+  .tries i{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--kt,var(--k))}
+  .tries i.used{background:var(--accent);border-color:var(--accent)}
+  .tries i.ok{background:var(--green);border-color:var(--green)}
+  .stage{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:clamp(10px,2.2dvh,20px);overflow:hidden}
+  .pzl{width:100%;display:flex;flex-direction:column;align-items:center;gap:clamp(8px,1.6dvh,14px)}
+  .quote{font-family:var(--display);font-size:64px;line-height:.5;color:var(--kt,var(--k));height:24px}
+  .line{font-family:var(--mono);font-weight:500;line-height:1.5;max-width:34ch}
+  .castb{display:flex;flex-direction:column;align-items:center}
+  .castb b{font-family:var(--display);font-weight:400;letter-spacing:1.5px;line-height:.95;text-wrap:balance}
+  .castb span{font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--muted);margin:6px 0}
+  .castb .mu{margin-top:12px;font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--muted)}
+  .castb .mu b{display:block;margin-top:4px;color:color-mix(in srgb,var(--text) 62%,var(--bg))}
+  .clues{display:flex;flex-direction:column;gap:6px;width:100%;max-width:420px}
+  .clue{display:flex;align-items:baseline;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px 12px;text-align:left;animation:fwd .4s both}
+  .clue small{flex:none;font-size:9.5px;letter-spacing:2px;color:var(--kt,var(--k))}
+  .clue span{font-family:var(--display);font-size:20px;letter-spacing:1.5px;line-height:1.1}
+  .wrongs{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+  .wrongs span{font-size:11px;padding:5px 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);color:var(--muted);text-decoration:line-through}
+  .ask{position:relative;width:100%;max-width:520px;margin:0 auto}
+  .sugs{position:absolute;left:0;right:0;bottom:calc(100% + 6px);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 -8px 30px rgba(0,0,0,.25);z-index:3}
+  .sugs button{border:0;background:none;color:var(--text);font-family:var(--display);font-size:22px;letter-spacing:1px;text-align:left;padding:11px 16px 9px;cursor:pointer;border-top:1px solid var(--border)}
+  .sugs button:first-child{border-top:0}
+  .sugs button:active,.sugs button.hi{background:color-mix(in srgb,var(--k) 12%,var(--surface))}
+  .sugs .none{font-size:11.5px;color:var(--muted);padding:12px 16px}
+  .inrow{display:flex;gap:8px}
+  .inrow input{flex:1;min-width:0;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:14px 16px;color:var(--text);font-family:var(--mono);font-size:16px;outline:none}
+  .inrow input:focus{border-color:var(--kt,var(--k))}
+  .inrow .btn{width:auto;padding:0 20px;font-size:20px}
+  .inrow .btn:disabled{opacity:.4}
+  .res{display:flex;flex-direction:column;align-items:center;gap:8px;animation:fwd .45s both}
+  .res small{font-size:11px;letter-spacing:3px;color:var(--muted)}
+  .res .ans{font-family:var(--display);font-size:clamp(30px,min(9vw,7dvh),56px);letter-spacing:2px;line-height:1;border-radius:18px;padding:10px 24px 8px;max-width:100%;text-wrap:balance;
+            border:1.5px solid var(--green);background:color-mix(in srgb,var(--green) 9%,var(--surface))}
+  .res.lost .ans{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+  .res h3{font-family:var(--display);font-weight:400;font-size:clamp(26px,5dvh,36px);letter-spacing:2px;color:var(--green);line-height:1}
+  .res.lost h3{color:var(--accent)}
+  /* keyboard open: give the puzzle less room */
+  #s-guess.kb .stage{justify-content:flex-start;gap:8px}
+  #s-guess.kb .quote{display:none}
+
+  /* ── Higher or Lower run ── */
+  #s-hol{background:radial-gradient(70% 45% at 20% 8%,color-mix(in srgb,var(--blue) 11%,transparent),transparent 70%),var(--bg)}
+  .q{text-align:center;margin:clamp(6px,1.6dvh,14px) 0 clamp(10px,2dvh,16px)}
+  .q small{display:block;font-size:10.5px;letter-spacing:3px;color:var(--muted);margin-bottom:6px}
+  .q h2{font-family:var(--display);font-weight:400;font-size:clamp(30px,min(8.6vw,6.4dvh),52px);letter-spacing:2px;line-height:1}
+  .q h2 em{font-style:normal;color:var(--blue)}
+  .pair{flex:1;min-height:0;width:100%;max-width:900px;margin:0 auto;display:grid;grid-template-rows:1fr 1fr;gap:12px;position:relative}
+  @media (orientation:landscape){.pair{grid-template-rows:1fr;grid-template-columns:1fr 1fr}}
+  .vs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:var(--bg);border:1.5px solid var(--border);display:grid;place-items:center;font-family:var(--display);font-size:18px;color:var(--muted);z-index:2;pointer-events:none}
+  .m{position:relative;border-radius:22px;background:var(--surface);color:var(--text);font-family:var(--mono);border:1.5px solid var(--border);box-shadow:var(--lift);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(6px,1.4dvh,12px);padding:16px;text-align:center;cursor:pointer;transition:border-color .3s,background .3s,opacity .3s;min-height:0;overflow:hidden}
+  .m .nm{font-family:var(--display);font-size:clamp(28px,min(8.4vw,5.6dvh),50px);letter-spacing:1.5px;line-height:1;text-wrap:balance;overflow-wrap:normal}
+  .m .val{font-family:var(--display);font-size:clamp(34px,min(10vw,7dvh),64px);letter-spacing:2px;line-height:1;min-height:1em;opacity:0;transform:translateY(10px);transition:opacity .45s,transform .45s}
+  .m.rev .val{opacity:1;transform:none} .m.off{pointer-events:none}
+  .m.win{border-color:var(--green);background:color-mix(in srgb,var(--green) 9%,var(--surface))} .m.win .val{color:var(--green)}
+  .m.wrong{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface))} .m.wrong .val{color:var(--accent)}
+  .m.lose{opacity:.7}
+  .hres{position:absolute;inset:0;z-index:5;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:24px;background:color-mix(in srgb,var(--bg) 93%,transparent);backdrop-filter:blur(6px)}
+  .hres.on{display:flex;animation:fwd .45s both}
+  .hres small{font-size:11px;letter-spacing:3px;color:var(--muted)}
+  .hres .big{font-family:var(--display);font-size:clamp(100px,min(32vw,22dvh),170px);line-height:.9;color:var(--blue)}
+  .hres .big span{font-size:.4em;color:var(--muted)}
+  .hres .btn{width:min(320px,100%);margin-top:16px}
+  .gbtn{width:min(520px,100%);margin:clamp(10px,2dvh,14px) auto 0}
+
+  /* ── Hangman of the day ── */
+  #s-hang{--c:var(--yellow);--ct:#0a0a0f;background:radial-gradient(70% 40% at 20% 6%,color-mix(in srgb,var(--yellow) 8%,transparent),transparent 70%),var(--bg)}
+  [data-theme=light] #s-hang{--ct:#fff}
+  #hmBoard{flex:1;min-height:0}
+  .hmres{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;animation:fwd .4s both}
+  .hmres h3{font-family:var(--display);font-weight:400;font-size:clamp(30px,8vw,42px);letter-spacing:3px;line-height:1;color:var(--yellow)}
+  .hmres.lost h3{color:var(--accent)}
+  .hmres small{font-size:11px;letter-spacing:2px;color:var(--muted)}
+  #s-hang .gbtn{background:var(--yellow);color:var(--ct);box-shadow:none}
+  [data-theme=dark] .pz[data-pz=hang]:not(.done) .st{color:#0a0a0f}
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- 1. TODAY -->
+  <section class="gs on" id="s-today">
+    <div class="col">
+      <div class="bar">
+        <button class="icon-btn" type="button" id="homeBtn" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button class="chipbtn" type="button" data-rules>How it works</button>
+      </div>
+      <div class="head"><h1>DAILY</h1><small><b id="dno"></b><br><span id="ddate"></span></small></div>
+      <div class="streak">
+        <div class="s"><span class="n" id="sAll">0</span><span class="t"><b>DAY STREAK</b>Play any puzzle each day to keep it going</span></div>
+        <div class="marks" id="marks"></div>
+      </div>
+      <div class="list" id="list"></div>
+      <div class="foot"><button class="btn outline" type="button" id="shareBtn" disabled>SHARE TODAY</button></div>
+      <div class="next">NEW PUZZLES IN <b id="cd">--:--:--</b></div>
+    </div>
+  </section>
+
+  <!-- 2. A GUESS PUZZLE (dialogue, story, cast) -->
+  <section class="gs" id="s-guess">
+    <div class="col">
+      <div class="gtop">
+        <button class="icon-btn" type="button" data-back aria-label="Back to today"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <span class="ttl" id="gTitle"></span>
+        <span class="tries" id="tries"></span>
+      </div>
+      <div class="stage" id="stage">
+        <div class="pzl" id="pzl"></div>
+        <div class="clues" id="clues"></div>
+        <div class="wrongs" id="wrongs"></div>
+        <div class="res" id="res" hidden></div>
+      </div>
+      <div class="ask" id="ask">
+        <div class="sugs" id="sugs" hidden></div>
+        <form class="inrow" id="form" autocomplete="off">
+          <input id="inp" type="text" placeholder="Type a movie name" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="go">
+          <button class="btn go" type="submit" id="guessBtn" disabled>GUESS</button>
+        </form>
+      </div>
+      <button class="btn go gbtn" type="button" data-back id="doneBtn" hidden>BACK TO DAILY</button>
+    </div>
+  </section>
+
+  <!-- 3. HANGMAN OF THE DAY -->
+  <section class="gs" id="s-hang">
+    <div class="col">
+      <div class="gtop">
+        <button class="icon-btn" type="button" data-back aria-label="Back to today"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <span class="ttl">HANGMAN OF THE DAY</span>
+      </div>
+      <div id="hmBoard"></div>
+      <div class="hmres" id="hmRes" hidden></div>
+      <button class="btn gbtn" type="button" data-back id="hmDone" hidden>BACK TO DAILY</button>
+    </div>
+  </section>
+
+  <!-- 4. HIGHER OR LOWER: today's 10 match-ups -->
+  <section class="gs" id="s-hol">
+    <div class="gtop" style="max-width:900px;width:100%;margin:0 auto">
+      <button class="icon-btn" type="button" data-back aria-label="Back to today"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <span class="ttl">HIGHER OR LOWER</span>
+      <span class="ttl" style="flex:none;color:var(--blue)" id="hScore">0</span>
+    </div>
+    <div class="q" id="q"><small id="qs"></small><h2 id="qh"></h2></div>
+    <div class="pair" id="pair"></div>
+    <div class="hres" id="hres">
+      <small>TODAY'S RUN</small>
+      <div class="big" id="hBig">0<span>/10</span></div>
+      <small id="hMsg"></small>
+      <button class="btn go" type="button" data-back style="--k:var(--blue)">BACK TO DAILY</button>
+    </div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet" id="rulesSheet" aria-label="How it works"><div class="grab"></div><h3>HOW IT WORKS</h3>
+  <div class="rules">
+    <div class="rule"><b>1</b><span>Five puzzles a day, the same for everyone. New ones at midnight, India time.</span></div>
+    <div class="rule"><b>2</b><span>Dialogue, Story and Cast: type the movie and pick it from the list. You get 3 tries, and every wrong try shows a new clue.</span></div>
+    <div class="rule"><b>3</b><span>Higher or Lower: today's 10 match-ups. One wrong tap ends the run.</span></div>
+    <div class="rule"><b>4</b><span>Hangman: guess today's movie title one letter at a time. Six wrong letters and it's a cut.</span></div>
+    <div class="rule"><b>5</b><span>One go at each. Play a puzzle every day to keep its streak going.</span></div>
+  </div>
+  <button class="btn outline" type="button" data-close>GOT IT</button>
+</section>
+
+<script src="core/hangman.js?v=0.1.0"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // ═════════════ SETTINGS ═════════════
+  const LAUNCH = '2026-11-17';      // Daily #1. Set this to launch day.
+  const SITE = 'cinefied-9f6a3.web.app/daily.html';
+
+  // generated from dialoguedetective, spoiler, starring, higherlower, charades and directorscut
+  const DATA = {"dlg":[["Pushpa: The Rise","Pushpa ante flower anukuntunnara? Fire!"],["Baahubali 2: The Conclusion","Naa maate shaasanam."],["Pokiri","Okka saari commit ayithe naa maata nene vinanu."],["Pokiri","Evadu kodithe dimma thirigi mind block ayipothado aade Pandugaadu."],["Gabbar Singh","Naaku konchem thikka undi, daaniko lekka undi."],["Indra","Veera Shankar Reddy... mokke kada ani peekesthe peeka kostha."],["Magadheera","Okkokkadini kaadu Sher Khan... okesaari vanda mandini pampinchu."],["Simha","Choodu, oka vaipe choodu... rendo vaipu chudal anukoku, tattukolev."],["Mirchi","Kathi vaadatam modalupedithe naakanna baaga evaru vaadaleru."],["Businessman","Nee target 10 miles ayithe, aim for the 11th mile."],["Julayi","Cheppali sir... nannu gelakoddu, chastharu ani cheppakapothe ela?"],["Athadu","Gun choodalanuko tappu ledu, kaani bullet choodalanukoku, chachipothav."],["Jalsa","Yuddhamlo gelavadam ante shatruvuni odinchadam, champadam kaadu."],["V","Sollaapu... dammunte nannu aapu."],["Pelli Choopulu","Naa saavu nenu sastha, neekenduku?"],["Narasimha","Athiga aashapade magavaadu, athiga aaveshapade aadadi sukhapadinattu charitralo ledu."],["Idiot","City ki entho mandi commissioners vasthuntaru pothuntaru... Chanti gaadu eppudu ikkade untadu, local."],["Temper","Naa peru Daya... naaku lenide adi."],["Tagore","Telugu bhashalo naaku nachani oke okka padam kshaminchadam."],["Businessman","Yuddham chethakaanode dharmam gurinchi maatladathaadu sir."],["Aadi","Aravaku... ammathodu addanga narikestha."],["Aravinda Sametha Veera Raghava","Kantapaddava kanikaristaanemo, ventapaddava narikestha."],["Janatha Garage","Balavanthudu balahenudini bhayapetti bathakadam aanavaayithi. Kaani aa balahenudi pakkana kooda oka balam undi."],["Jai Lava Kusa","Aa Ravanudini champaalante samudram daatala... ee Ravanudini champaalante samudramantha dhairyam undala?"],["Aagadu","Dikki balisina kodi chicken shop mundukochi thoda kottindanta."],["Chatrapathi","Oka adugu... oke okka adugu."],["Shivamani","Naa peru Shivamani, naaku konchem mental..."],["Gharana Mogudu","Okkasaari face turning ichukondi."],["Gang Leader","Cheyyi choosava entha rough ga undo... rough aadinchestha."],["Baasha","Nenu okkasari chepthe vanda saarlu cheppinattu."],["Shivaji","Nanna, pandulu gumpuga vasthayi... simham single ga vasthundi."],["Indra","Tappu naa vaipu undi kabatti tala dinchukuni velthunna, ledante talalu teesukellevaadni."],["Narasimha","Naa daari rahadaari."],["Temper","Neeku ego lopala untundemo, naaku naa chuttu Wi-Fi la untundi."],["Bommarillu","Anthena? Inkem kavali? Veelaithe naalugu maatalu, kudirithe cup coffee!"],["Teen Maar","Kaaranam leni kopam, gauravam leni prema, badhyatha leni yavvanam, gnaapakam leni vruddhapyam anavasaram."],["S/O Satyamurthy","Manam baagunnappudu lekkalu maatlaadi, kashtallo unnappudu viluvalu maatlaadakoodadu."],["Temper","Neeku naaku friendship emitira? Nuvvu villain, nenu hero!"],["Temper","Username Daya, password Police!"],["Neninthe","Nenu entha yedhavano naake telidu!"],["Desamuduru","You know Guntur bolke ek sheher hai? Nenu ikkada kottaananuko, resound udhar aatha!"]],"sto":[["RRR","Two revolutionaries in British India become the closest of friends without knowing that each has a secret mission that will put them on opposite sides."],["Baahubali: The Beginning","A boy raised by villagers climbs a giant waterfall and falls for a rebel warrior woman. He then discovers he is the son of a king whose kingdom was taken through betrayal."],["Pushpa: The Rise","A daily-wage labourer in the forests of Seshachalam rises through the red sandalwood smuggling trade on sheer nerve, chasing the respect his family name never had."],["Magadheera","A young man and a woman feel a bond they cannot explain. Four hundred years earlier, a fearless warrior and a princess were kept apart by a jealous commander."],["Arjun Reddy","A short-tempered, brilliant medical student falls for a junior at college. When they are forced apart, he spirals into alcohol and self-destruction."],["Ala Vaikunthapurramuloo","A man raised by a strict, stingy father takes a job in a rich businessman's company, unaware that this is the family he was actually born into."],["Rangasthalam","In a 1980s village, a hard-of-hearing young man who runs a water pump for farmers is caught between his elder brother and the tyrannical village president."],["Eega","A young man murdered by a ruthless businessman is reborn as a housefly and sets out to take his revenge."],["Arundhati","A woman who looks like her fearless ancestor is sent to a long-abandoned fort, where an evil sorcerer buried centuries ago is waiting to rise again."],["Pokiri","A street thug who beats people up for a price turns out to be an undercover police officer hunting a powerful underworld don."],["Athadu","A professional assassin on the run poses as a missing man to hide in a village, and slowly becomes part of the family he is pretending to belong to."],["Srimanthudu","The son of a billionaire gives up his rich life to adopt a poor village, and fights a local politician who wants to keep it down."],["Gabbar Singh","A fun-loving police officer who adores song contests is posted to a rural town and takes on a corrupt, dangerous local boss."],["Attarintiki Daredi","A billionaire's grandson takes a job as a driver in his own aunt's house to bring his estranged family back together."],["Jersey","A talented cricketer who quit the game after failure decides to return in his late thirties to give his young son the one thing he asked for."],["Salaar: Part 1 – Ceasefire","Two childhood friends grow up apart. One of them becomes the most feared protector of a lawless fortress city when the other is in danger."],["Kalki 2898 AD","In a distant future, the last living city is ruled by a tyrant, while a mysterious pregnant woman becomes the key to everyone's fate."],["Dasara","In a coal-mining village, a man and his two best friends see their lives turn upside down because of love, betrayal and the local bar."],["Geetha Govindam","A mild-mannered lecturer kisses a sleeping stranger on a bus ride. When they meet again, her family turns out to be the one his sister is about to marry into."],["Temper","A corrupt police officer who takes bribes changes completely after a crime against a girl, and decides to take on the system himself."],["Aravinda Sametha Veera Raghava","After his father is killed, the son of a faction leader tries to end a bloody family war in Rayalaseema."],["Akhanda","A fearless Aghora steps in to protect a girl and a district from a corrupt mining mafia, and he has a very different twin brother."],["Hi Nanna","A father tells his curious young daughter a bedtime love story every night, and the girl in that story turns out to be real."],["Bharat Ane Nenu","A young man studying abroad returns home after his father's death and unexpectedly becomes chief minister, determined to run the state by his own honest rules."],["Major","The true story of an army commando who gave his life saving hostages during the 2008 attacks on Mumbai hotels."],["Hanu-Man","A small-time thief in a village gets superpowers from a magical gem and has to face a rich man who wants the same power."],["Race Gurram","Two brothers who cannot stand each other end up in a war of wits after a ruthless politician enters their lives."],["Manam","A family across three generations are separated by fate and keep finding each other again, lifetime after lifetime."],["Ye Maaya Chesave","A young aspiring filmmaker falls for a girl from a different faith, and both families are against it."],["Sita Ramam","A young woman sets out to deliver a soldier's letters, written decades ago, to the person they were meant for."],["Mahanati","A journalist traces the life of a legendary actress, from her days as a child artist to being the biggest star in the industry, and her fall."],["Bommarillu","A son smothered by his father's control falls in love with a free-spirited girl, and learns what it takes to stand up for himself."],["Baahubali 2: The Conclusion","The crowned prince of Mahishmati is exiled by his own family, and the whole kingdom is left asking one question about the man who stabbed him."],["Gangotri","A boy raised by a guru in the mountains returns to the world below, where a family feud drags him into a war."],["Arya","A cheerful young man falls for a girl with unstoppable one-sided love, while her fiancé turns out to be far more dangerous than he looks."],["Bunny","A student in Visakhapatnam takes on a corrupt politician to protect a family he has come to love, hiding his own past in the process."],["Happy","A free-spirited young man who runs from responsibility gets tangled up with a girl and a bunch of unlikely friends."],["Desamuduru","A small-town journalist finds himself protecting a girl who happens to be a Himalayan saint's daughter and is hunted by a corrupt chief minister."],["Parugu","A girl runs away from her own wedding with a boy who knows her family would never accept, and the two are chased across the state."],["Arya 2","Two best friends love the same girl, and one of them goes dark with obsession while the other tries to protect her."],["Varudu","A groom is kidnapped on his wedding day by a man who wants to make sure the marriage never happens."],["Vedam","Five strangers in Hyderabad live very different lives, and one day their paths cross in a way that changes all of them."],["Badrinath","A guardian of a sacred temple falls in love with a girl whose family has a long-standing grudge against him."],["Julayi","An unemployed graduate stumbles onto a bank robbery plan that could make him rich, if he can outwit a ruthless gangster."],["Yevadu","A man whose face has been reconstructed after a brutal attack returns for revenge against the gangster who nearly killed him."],["S/O Satyamurthy","A rich young man must start again from scratch when his father passes away and a debt that nobody mentioned comes to the surface."],["Sarrainodu","A man with a short fuse and a heart of gold takes on a corrupt politician, one fight at a time."],["Kushi","Two stubborn young lovers who each refuse to say sorry first keep ruining a perfect romance with their own egos."],["Jalsa","A roaming young man with a past in the Naxal movement returns to his village to fix a family wrong, and he has an old love waiting."],["Panjaa","A stylish man with an odd habit of hating wealth is hunted by a mafia boss, and the real reason comes out when his past does."],["Katamarayudu","A kind-hearted village strongman refuses to bow down to anybody, even when it means taking on his own brothers' enemies."],["Vakeel Saab","Three girls are accused of a crime, and a retired lawyer who has stayed silent for years returns to court to defend them."],["Bheemla Nayak","An honest cop and a retired army havildar with pride as big as the other's go head to head over a small mistake."],["Chirutha","A carefree young man in Hyderabad tries to bring down a dangerous don after being tricked into fighting his battle."],["Orange","A man who believes love is a lie meets a girl who believes it is everything, and neither of them quite keeps to their rules."],["Racha","A man who works as a taxi driver in Hyderabad goes after a rowdy gang lord who wants to make him a pawn in a blood feud."],["Naayak","A young man's life is turned upside down when his lookalike, a feared underworld figure, takes his identity."],["Okkadu","A kabaddi player in Hyderabad rescues a girl from a forced marriage to a faction leader, and goes up against him in his own city."],["Khaleja","A taxi driver with a strange knack for being in the right place at the right time ends up as the saviour of a village."],["Dookudu","A cop who has been playing a double game as a local goon is hunted down by both the cops and the underworld."],["Businessman","A man from a small village dreams of building a gangster's empire in Mumbai, and he has a plan that nobody could see coming."],["Maharshi","A billionaire on top of the world returns to his village and has to face a friend he left behind and a cause he forgot."],["Sarileru Neekevvaru","An army major on a mission to escort a family ends up taking on a ruthless businessman across a long train ride."],["Guntur Kaaram","A man estranged from his mother and her powerful family is forced to confront the past and the family he never knew."],["Simhadri","A loyal servant protects a young woman in a distant village, and his sad past is slowly revealed with each fight."],["Yamadonga","A thief sent to the afterlife by mistake finds a loophole in the rules and tricks the god of death himself."],["Kantri","A lawyer's daughter falls for a man who works as a street thug, and his rough ways bring her family face to face with powerful men."],["Adhurs","Twin brothers, one a timid priest and the other a loud, brave guy, swap roles to protect a family from a mad don."],["Baadshah","A lookalike who stays in a lawless land of mafia gangs takes down a feared don while trying to keep his family safe."],["Janatha Garage","A mechanic who runs a workshop as a family for the poor stands with a young man who loves nature, and the two take on injustice together."],["Jai Lava Kusa","Three brothers separated by fate, one of whom is bitter and violent, plan a showdown that ends in a family reunion."],["Devara: Part 1","A fearless man protects his coastal people from the dangers of smuggling at sea, until his own son pays the price."],["Varsham","A girl from a rich family falls for a poor singer, while a violent criminal obsessed with her stands in the way."],["Chatrapathi","A refugee boy from Sri Lanka grows up in a harbour town and rises to take on those who treated his people as slaves."],["Yogi","A man raised in the underworld sets out to find the mother he lost as a child."],["Billa","A stylish international don has a lookalike, and a policeman needs a petty thief to take his place and bring him down."],["Darling","A young man who is shy in love gets a girl's attention through a series of misunderstandings and then loses her again."],["Mr. Perfect","A workaholic who believes in logic and a free-spirited girl clash over what makes a good relationship."],["Rebel","A hero grows up trying to carry out a promise to his dying guardian, but the world stands in his way."],["Saaho","An undercover cop and a master thief in Mumbai end up in the middle of a deadly heist in a city ruled by crime lords."],["Radhe Shyam","A palmist who has never believed in love meets a doctor on a trip to Italy, where his own predictions fall apart."],["Adipurush","A prince goes into exile with his wife and brother, and a demon king steals her away across the sea."],["Happy Days","A group of engineering college friends enjoy their first year, falling in love, fighting and growing up together."],["Godavari","A boy and a girl on a boat trip along a river get to know each other while a family drama unfolds along the banks."],["Fidaa","A Telangana village girl with a strong will clashes and bonds with an NRI doctor who has come home for his brother's wedding."],["Love Story","A boy from an oppressed community and a girl from a rich family find music in each other and fight for the right to be together."],["Majili","A cricketer whose life crumbled after a lost love slowly rebuilds when a young woman steps in and teaches him how to care again."],["Geethanjali","A friendly young man moves into a house haunted by a spirit, and the more he tries to ignore it, the more it follows him."],["Dhee","A young man is mistaken for a courier and finds himself between two groups of gangsters in a city filled with bluffs."],["Ready","A man pretends to be a cousin at a family wedding in order to win over a girl and avoid her violent relatives."],["Kick","A thrill seeker who will do anything for a rush steals from the wrong people, and a cop is on his trail."],["Pelli Choopulu","A topper who gives up his career for a street food truck falls into a bumpy friendship that turns into love."],["Brochevarevarura","Three friends find themselves in a film school in a series of wacky events when a kidnapping makes them heroes."],["Mathu Vadalara","A rookie delivery agent is dragged into a messy murder case with his friend in a night of dark humour."],["Goodachari","A young man joins a secret agency for a sacred mission, and soon learns that the real enemy may be among his own."],["Kshanam","A man returns to meet an old girlfriend who says her daughter is missing, but nobody believes a child ever existed."],["Evaru","A police officer investigates a rape, and the more he digs, the less the story matches what the witness says happened."],["Shyam Singha Roy","A modern filmmaker is accused of plagiarism, and the story of an earlier writer bleeds into his own life."],["Taxiwaala","A young man buys a second-hand car and soon learns that it comes with a ghost who has something to settle."],["Dear Comrade","A student leader with a fiery temper has to help the woman he loves recover after a traumatic experience."],["Liger","A tea-seller's son from Mumbai with a stammer goes after a place in the MMA ring, guided by his determined mother."],["World Famous Lover","A man's love life through four chapters is told through his heartbreak and the women who changed him."],["Waltair Veerayya","A rowdy fisherman of Visakhapatnam goes undercover and unites with his estranged brother to take down a drug lord."],["Veera Simha Reddy","A powerful faction leader in Rayalaseema is away, and the story of what he left behind slowly comes to light."],["Bhagavanth Kesari","A tough ex-convict makes a promise to a dying friend and trains the man's daughter to be fearless."],["Legend","A political rival tries to stop a fearless man from giving justice to the people, but he fights back in a style of his own."],["Simha","A fearless district collector goes after the crooks who killed his family and takes on a ruthless industrialist."],["Indra","A reformed man who once ruled Varanasi hides his violent past while he lives peacefully with his family in a small village."],["Tagore","A professor teaches by day and fights corruption by night, with a network of students as his eyes and ears."],["Stalin","A man helps others without expecting anything and asks them to pass on the favour to three more people."],["F2: Fun and Frustration","Two brothers-in-law who are tired of their wives' demands try to run away from them and cause even more trouble."],["Gudumba Shankar","A carefree loafer who has no job or goal meets a girl whose family wants nothing to do with him."],["Ghajini","A businessman with short-term memory loss tattoos clues all over his body to hunt down the man who killed his beloved."],["Lakshmi","A brave young man steps in to protect a girl from a powerful family that wants her gone."],["Malliswari","A princess and a village youth meet in an unusual setting, and their love faces a test in a royal family."],["Manmadhudu","A man who hates women is persuaded to talk to a girl through a friend and slowly lets her into his heart."],["Oopiri","A rich man who cannot move his body hires a street-smart ex-convict as his caregiver, and the two change each other's lives."],["Premam","A young man falls in love three times across his school years, his college life and his working life."],["Master","A heavy-drinking professor takes a job at a juvenile school and goes up against a gangster who uses boys as pawns."],["Leo","A peaceful cafe owner in Himachal whose past catches up with him when a pair of gangsters come to claim him."],["Jailer","A retired prison warden with a calm life turns lethal when his son goes missing in a case with a ruthless smuggling ring."],["Robo","A scientist builds a human-like machine that falls in love with his fiancée and turns violent when it is rejected."],["Khaidi No. 150","A prisoner who looks identical to a farmer-activist takes his place and fights the corporate land grab that destroyed a village."],["Sye Raa Narasimha Reddy","A chieftain of Rayalaseema rises against the British, long before the freedom struggle became a national movement."],["Mirchi","A cold, calm man from a feuding family hides his true background until his love is put at risk by an old rivalry."],["Pushpa 2: The Rule","The labourer who became a smuggling kingpin now faces a rival police officer and a growing empire that refuses to bow."]],"cast":[["RRR","Jr NTR, Ram Charan","Alia Bhatt","M. M. Keeravani"],["Magadheera","Ram Charan","Kajal Aggarwal","M. M. Keeravani"],["Baahubali: The Beginning","Prabhas","Tamannaah","M. M. Keeravani"],["Baahubali 2: The Conclusion","Prabhas","Anushka Shetty","M. M. Keeravani"],["Pushpa: The Rise","Allu Arjun","Rashmika Mandanna","Devi Sri Prasad"],["Arjun Reddy","Vijay Deverakonda","Shalini Pandey","Radhan"],["Geetha Govindam","Vijay Deverakonda","Rashmika Mandanna","Gopi Sundar"],["Dear Comrade","Vijay Deverakonda","Rashmika Mandanna","Justin Prabhakaran"],["Pelli Choopulu","Vijay Deverakonda","Ritu Varma","Vivek Sagar"],["Taxiwaala","Vijay Deverakonda","Priyanka Jawalkar","Jakes Bejoy"],["Kushi (2023)","Vijay Deverakonda","Samantha","Hesham Abdul Wahab"],["Ala Vaikunthapurramuloo","Allu Arjun","Pooja Hegde","S. Thaman"],["Rangasthalam","Ram Charan","Samantha","Devi Sri Prasad"],["Eega","Nani","Samantha","M. M. Keeravani"],["Pokiri","Mahesh Babu","Ileana D'Cruz","Mani Sharma"],["Athadu","Mahesh Babu","Trisha","Mani Sharma"],["Okkadu","Mahesh Babu","Bhumika Chawla","Mani Sharma"],["Murari","Mahesh Babu","Sonali Bendre","Mani Sharma"],["Arjun","Mahesh Babu","Shriya Saran","Mani Sharma"],["Khaleja","Mahesh Babu","Anushka Shetty","Mani Sharma"],["Srimanthudu","Mahesh Babu","Shruti Haasan","Devi Sri Prasad"],["Bharat Ane Nenu","Mahesh Babu","Kiara Advani","Devi Sri Prasad"],["Maharshi","Mahesh Babu","Pooja Hegde","Devi Sri Prasad"],["Sarileru Neekevvaru","Mahesh Babu","Rashmika Mandanna","Devi Sri Prasad"],["Nenokkadine","Mahesh Babu","Kriti Sanon","Devi Sri Prasad"],["Dookudu","Mahesh Babu","Samantha","S. Thaman"],["Businessman","Mahesh Babu","Kajal Aggarwal","S. Thaman"],["Guntur Kaaram","Mahesh Babu","Sreeleela","S. Thaman"],["Spyder","Mahesh Babu","Rakul Preet Singh","Harris Jayaraj"],["Seethamma Vakitlo Sirimalle Chettu","Venkatesh, Mahesh Babu","Samantha","Mickey J. Meyer"],["Tholi Prema","Pawan Kalyan","Keerthi Reddy","Deva"],["Thammudu","Pawan Kalyan","Preeti Jhangiani","Ramana Gogula"],["Badri","Pawan Kalyan","Amisha Patel","Ramana Gogula"],["Kushi","Pawan Kalyan","Bhumika Chawla","Mani Sharma"],["Gudumba Shankar","Pawan Kalyan","Meera Jasmine","Mani Sharma"],["Jalsa","Pawan Kalyan","Ileana D'Cruz","Devi Sri Prasad"],["Gabbar Singh","Pawan Kalyan","Shruti Haasan","Devi Sri Prasad"],["Attarintiki Daredi","Pawan Kalyan","Samantha","Devi Sri Prasad"],["Bheemla Nayak","Pawan Kalyan, Rana Daggubati","Nithya Menen","S. Thaman"],["Simhadri","Jr NTR","Bhumika Chawla","M. M. Keeravani"],["Yamadonga","Jr NTR","Priyamani","M. M. Keeravani"],["Temper","Jr NTR","Kajal Aggarwal","Anup Rubens"],["Nannaku Prematho","Jr NTR","Rakul Preet Singh","Devi Sri Prasad"],["Janatha Garage","Jr NTR","Samantha","Devi Sri Prasad"],["Jai Lava Kusa","Jr NTR","Raashii Khanna","Devi Sri Prasad"],["Aravinda Sametha Veera Raghava","Jr NTR","Pooja Hegde","S. Thaman"],["Devara: Part 1","Jr NTR","Janhvi Kapoor","Anirudh Ravichander"],["Arya","Allu Arjun","Anuradha Mehta","Devi Sri Prasad"],["Bunny","Allu Arjun","Gowri Munjal","Devi Sri Prasad"],["Desamuduru","Allu Arjun","Hansika Motwani","Chakri"],["Parugu","Allu Arjun","Sheela","Mani Sharma"],["Arya 2","Allu Arjun","Kajal Aggarwal","Devi Sri Prasad"],["Julayi","Allu Arjun","Ileana D'Cruz","Devi Sri Prasad"],["Race Gurram","Allu Arjun","Shruti Haasan","S. Thaman"],["S/O Satyamurthy","Allu Arjun","Samantha","Devi Sri Prasad"],["Sarrainodu","Allu Arjun","Rakul Preet Singh","S. Thaman"],["Chirutha","Ram Charan","Neha Sharma","Mani Sharma"],["Orange","Ram Charan","Genelia D'Souza","Harris Jayaraj"],["Racha","Ram Charan","Tamannaah","Mani Sharma"],["Naayak","Ram Charan","Kajal Aggarwal","S. Thaman"],["Yevadu","Ram Charan","Shruti Haasan","Devi Sri Prasad"],["Dhruva","Ram Charan","Rakul Preet Singh","Hiphop Tamizha"],["Varsham","Prabhas","Trisha","Devi Sri Prasad"],["Chatrapathi","Prabhas","Shriya Saran","M. M. Keeravani"],["Yogi","Prabhas","Nayanthara","Ramana Gogula"],["Billa","Prabhas","Anushka Shetty","Mani Sharma"],["Darling","Prabhas","Kajal Aggarwal","G. V. Prakash Kumar"],["Mr. Perfect","Prabhas","Kajal Aggarwal","Devi Sri Prasad"],["Mirchi","Prabhas","Anushka Shetty","Devi Sri Prasad"],["Radhe Shyam","Prabhas","Pooja Hegde","Justin Prabhakaran"],["Salaar: Part 1 – Ceasefire","Prabhas","Shruti Haasan","Ravi Basrur"],["Kalki 2898 AD","Prabhas","Deepika Padukone","Santhosh Narayanan"],["Indra","Chiranjeevi","Sonali Bendre","Mani Sharma"],["Tagore","Chiranjeevi","Shriya Saran","Mani Sharma"],["Stalin","Chiranjeevi","Trisha","Mani Sharma"],["Shankar Dada M.B.B.S.","Chiranjeevi","Sonali Bendre","Devi Sri Prasad"],["Khaidi No. 150","Chiranjeevi","Kajal Aggarwal","Devi Sri Prasad"],["Waltair Veerayya","Chiranjeevi","Shruti Haasan","Devi Sri Prasad"],["Sye Raa Narasimha Reddy","Chiranjeevi","Nayanthara","Amit Trivedi"],["Narasimha Naidu","Balakrishna","Simran","Mani Sharma"],["Simha","Balakrishna","Nayanthara","Chakri"],["Legend","Balakrishna","Sonal Chauhan","Devi Sri Prasad"],["Akhanda","Balakrishna","Pragya Jaiswal","S. Thaman"],["Veera Simha Reddy","Balakrishna","Shruti Haasan","S. Thaman"],["Bhagavanth Kesari","Balakrishna","Kajal Aggarwal","S. Thaman"],["Nuvvu Naaku Nachav","Venkatesh","Aarthi Agarwal","Koti"],["Malliswari","Venkatesh","Katrina Kaif","Koti"],["F2: Fun and Frustration","Venkatesh, Varun Tej","Tamannaah","Devi Sri Prasad"],["Shiva","Nagarjuna","Amala","Ilaiyaraaja"],["Ninne Pelladata","Nagarjuna","Tabu","Sandeep Chowta"],["Annamayya","Nagarjuna","Ramya Krishnan","M. M. Keeravani"],["Manmadhudu","Nagarjuna","Sonali Bendre","Devi Sri Prasad"],["Soggade Chinni Nayana","Nagarjuna","Ramya Krishnan","Anup Rubens"],["Manam","Nagarjuna, Naga Chaitanya","Samantha","Anup Rubens"],["Oopiri","Nagarjuna, Karthi","Tamannaah","Gopi Sundar"],["Ye Maaya Chesave","Naga Chaitanya","Samantha","A. R. Rahman"],["100% Love","Naga Chaitanya","Tamannaah","Devi Sri Prasad"],["Majili","Naga Chaitanya","Samantha","Gopi Sundar"],["Rarandoi Veduka Chudham","Naga Chaitanya","Rakul Preet Singh","Devi Sri Prasad"],["Love Story","Naga Chaitanya","Sai Pallavi","Pawan Ch"],["Fidaa","Varun Tej","Sai Pallavi","Shakthikanth Karthick"],["Kanche","Varun Tej","Pragya Jaiswal","Chirantan Bhatt"],["Tholi Prema (2018)","Varun Tej","Raashii Khanna","S. Thaman"],["Ala Modalaindi","Nani","Nithya Menen","Kalyani Malik"],["Bhale Bhale Magadivoy","Nani","Lavanya Tripathi","Gopi Sundar"],["Nenu Local","Nani","Keerthy Suresh","Devi Sri Prasad"],["Ninnu Kori","Nani","Nivetha Thomas","Gopi Sundar"],["Jersey","Nani","Shraddha Srinath","Anirudh Ravichander"],["Shyam Singha Roy","Nani","Sai Pallavi","Mickey J. Meyer"],["Dasara","Nani","Keerthy Suresh","Santhosh Narayanan"],["Hi Nanna","Nani","Mrunal Thakur","Hesham Abdul Wahab"],["Sita Ramam","Dulquer Salmaan","Mrunal Thakur","Vishal Chandrashekhar"],["Bommarillu","Siddharth","Genelia D'Souza","Devi Sri Prasad"],["Nuvvostanante Nenoddantana","Siddharth","Trisha","Devi Sri Prasad"],["Happy Days","Varun Sandesh","Tamannaah","Mickey J. Meyer"],["Kotha Bangaru Lokam","Varun Sandesh","Swetha Basu Prasad","Mickey J. Meyer"],["Leader","Rana Daggubati","Richa Gangopadhyay","Mickey J. Meyer"],["Ready","Ram Pothineni","Genelia D'Souza","Devi Sri Prasad"],["Kandireega","Ram Pothineni","Hansika Motwani","S. Thaman"],["Nenu Sailaja","Ram Pothineni","Keerthy Suresh","Devi Sri Prasad"],["iSmart Shankar","Ram Pothineni","Nidhhi Agerwal","Mani Sharma"],["Idiot","Ravi Teja","Rakshita","Chakri"],["Bhadra","Ravi Teja","Meera Jasmine","Devi Sri Prasad"],["Vikramarkudu","Ravi Teja","Anushka Shetty","M. M. Keeravani"],["Kick","Ravi Teja","Ileana D'Cruz","S. Thaman"],["Mirapakay","Ravi Teja","Richa Gangopadhyay","S. Thaman"],["Krack","Ravi Teja","Shruti Haasan","S. Thaman"],["Dhamaka","Ravi Teja","Sreeleela","Bheems Ceciroleo"],["Jayam","Nithiin","Sadha","R. P. Patnaik"],["Dil","Nithiin","Neha Bamb","R. P. Patnaik"],["Sye","Nithiin","Genelia D'Souza","M. M. Keeravani"],["Gunde Jaari Gallanthayyinde","Nithiin","Nithya Menen","Anup Rubens"],["Bheeshma","Nithiin","Rashmika Mandanna","Mahati Swara Sagar"],["Run Raja Run","Sharwanand","Seerat Kapoor","Ghibran"],["Mahanubhavudu","Sharwanand","Mehreen Pirzada","S. Thaman"],["Kshanam","Adivi Sesh","Adah Sharma","Sricharan Pakala"],["Goodachari","Adivi Sesh","Sobhita Dhulipala","Sricharan Pakala"],["Major","Adivi Sesh","Saiee Manjrekar","Sricharan Pakala"],["Karthikeya 2","Nikhil Siddhartha","Anupama Parameswaran","Kaala Bhairava"],["Uppena","Panja Vaisshnav Tej","Krithi Shetty","Devi Sri Prasad"],["Jathi Ratnalu","Naveen Polishetty","Faria Abdullah","Radhan"],["Agent Sai Srinivasa Athreya","Naveen Polishetty","Shruti Sharma","Mark K. Robin"],["Baby","Anand Deverakonda","Vaishnavi Chaitanya","Vijai Bulganin"]],"hol":[["RRR",2022,7.8,6,187],["Baahubali: The Beginning",2015,8,7,159],["Baahubali 2: The Conclusion",2017,8.2,5,167],["Pushpa: The Rise",2021,7.6,6,179],["Magadheera",2009,7.7,6,166],["Arjun Reddy",2017,8,7,182],["Eega",2012,7.7,3,134],["Srimanthudu",2015,7.3,6,160],["Ala Vaikunthapurramuloo",2020,7.3,7,165],["Rangasthalam",2018,8.2,7,179],["Jersey",2019,8.4,4,160],["Geetha Govindam",2018,7.7,7,143],["Sita Ramam",2022,8.5,6,163],["Mahanati",2018,8.4,6,177],["Hanu-Man",2024,7.8,4,158],["Kalki 2898 AD",2024,7,3,181],["Salaar: Part 1 – Ceasefire",2023,6.4,4,175],["Dasara",2023,6.2,6,156],["Major",2022,8.1,3,149],["Gabbar Singh",2012,7.4,6,163],["Race Gurram",2014,7.2,7,156],["Manam",2014,8.3,5,137],["Akhanda",2021,7.1,5,167],["Bharat Ane Nenu",2018,7.5,6,173],["Aravinda Sametha Veera Raghava",2018,7.2,6,169],["Athadu",2005,8,5,165],["Pokiri",2006,7.8,5,165],["Okkadu",2003,7.8,6,169],["Simhadri",2003,7.4,6,172],["Arya",2004,7.4,6,165],["Bommarillu",2006,8,6,155],["Pelli Choopulu",2016,7.9,4,139],["Kshanam",2016,7.9,2,127],["Goodachari",2018,7.9,3,147],["Evaru",2019,7.9,2,120],["Mirchi",2013,7.5,6,160],["Dookudu",2011,7.4,6,165],["Attarintiki Daredi",2013,7.4,6,166],["Temper",2015,7.3,5,150],["Janatha Garage",2016,7,5,160],["Maharshi",2019,7.3,6,177],["Sarileru Neekevvaru",2020,6.2,6,169],["Pushpa 2: The Rule",2024,6.1,6,200],["Oopiri",2016,7.9,4,150],["Vedam",2010,8.1,5,160]],"dir":{"Student No. 1":"S. S. Rajamouli","Simhadri":"S. S. Rajamouli","Sye":"S. S. Rajamouli","Chatrapathi":"S. S. Rajamouli","Vikramarkudu":"S. S. Rajamouli","Yamadonga":"S. S. Rajamouli","Magadheera":"S. S. Rajamouli","Maryada Ramanna":"S. S. Rajamouli","Eega":"S. S. Rajamouli","Baahubali: The Beginning":"S. S. Rajamouli","Baahubali 2: The Conclusion":"S. S. Rajamouli","RRR":"S. S. Rajamouli","Nuvve Nuvve":"Trivikram Srinivas","Athadu":"Trivikram Srinivas","Jalsa":"Trivikram Srinivas","Khaleja":"Trivikram Srinivas","Julayi":"Trivikram Srinivas","Attarintiki Daredi":"Trivikram Srinivas","S/O Satyamurthy":"Trivikram Srinivas","A Aa":"Trivikram Srinivas","Agnyaathavaasi":"Trivikram Srinivas","Aravinda Sametha Veera Raghava":"Trivikram Srinivas","Ala Vaikunthapurramuloo":"Trivikram Srinivas","Guntur Kaaram":"Trivikram Srinivas","Arya":"Sukumar","Jagadam":"Sukumar","Arya 2":"Sukumar","100% Love":"Sukumar","Nenokkadine":"Sukumar","Nannaku Prematho":"Sukumar","Rangasthalam":"Sukumar","Pushpa: The Rise":"Sukumar","Pushpa 2: The Rule":"Sukumar","Badri":"Puri Jagannadh","Itlu Sravani Subramanyam":"Puri Jagannadh","Idiot":"Puri Jagannadh","Amma Nanna O Tamila Ammayi":"Puri Jagannadh","Shivamani":"Puri Jagannadh","Pokiri":"Puri Jagannadh","Desamuduru":"Puri Jagannadh","Chirutha":"Puri Jagannadh","Businessman":"Puri Jagannadh","Temper":"Puri Jagannadh","iSmart Shankar":"Puri Jagannadh","Liger":"Puri Jagannadh","Mirchi":"Koratala Siva","Srimanthudu":"Koratala Siva","Janatha Garage":"Koratala Siva","Bharat Ane Nenu":"Koratala Siva","Acharya":"Koratala Siva","Devara: Part 1":"Koratala Siva","Bhadra":"Boyapati Srinu","Tulasi":"Boyapati Srinu","Simha":"Boyapati Srinu","Legend":"Boyapati Srinu","Sarrainodu":"Boyapati Srinu","Jaya Janaki Nayaka":"Boyapati Srinu","Vinaya Vidheya Rama":"Boyapati Srinu","Akhanda":"Boyapati Srinu","Anandam":"Sreenu Vaitla","Venky":"Sreenu Vaitla","Dhee":"Sreenu Vaitla","Ready":"Sreenu Vaitla","King":"Sreenu Vaitla","Dookudu":"Sreenu Vaitla","Baadshah":"Sreenu Vaitla","Aagadu":"Sreenu Vaitla","Aadi":"V. V. Vinayak","Chennakesava Reddy":"V. V. Vinayak","Dil":"V. V. Vinayak","Tagore":"V. V. Vinayak","Bunny":"V. V. Vinayak","Lakshmi":"V. V. Vinayak","Krishna":"V. V. Vinayak","Adhurs":"V. V. Vinayak","Naayak":"V. V. Vinayak","Khaidi No. 150":"V. V. Vinayak","Anand":"Sekhar Kammula","Godavari":"Sekhar Kammula","Happy Days":"Sekhar Kammula","Leader":"Sekhar Kammula","Life Is Beautiful":"Sekhar Kammula","Fidaa":"Sekhar Kammula","Love Story":"Sekhar Kammula","Kuberaa":"Sekhar Kammula","Gamyam":"Krish Jagarlamudi","Vedam":"Krish Jagarlamudi","Krishnam Vande Jagadgurum":"Krish Jagarlamudi","Kanche":"Krish Jagarlamudi","Gautamiputra Satakarni":"Krish Jagarlamudi","Kondapolam":"Krish Jagarlamudi","Yevade Subramanyam":"Nag Ashwin","Mahanati":"Nag Ashwin","Kalki 2898 AD":"Nag Ashwin","Pataas":"Anil Ravipudi","Supreme":"Anil Ravipudi","Raja the Great":"Anil Ravipudi","F2: Fun and Frustration":"Anil Ravipudi","Sarileru Neekevvaru":"Anil Ravipudi","F3: Fun and Frustration":"Anil Ravipudi","Bhagavanth Kesari":"Anil Ravipudi","Sankranthiki Vasthunam":"Anil Ravipudi","Shock":"Harish Shankar","Mirapakay":"Harish Shankar","Gabbar Singh":"Harish Shankar","Ramayya Vasthavayya":"Harish Shankar","Subramanyam for Sale":"Harish Shankar","Duvvada Jagannadham":"Harish Shankar","Gaddalakonda Ganesh":"Harish Shankar","Mr. Bachchan":"Harish Shankar","Munna":"Vamshi Paidipally","Brindavanam":"Vamshi Paidipally","Yevadu":"Vamshi Paidipally","Oopiri":"Vamshi Paidipally","Maharshi":"Vamshi Paidipally","Varisu":"Vamshi Paidipally","Choodalani Vundi":"Gunasekhar","Okkadu":"Gunasekhar","Arjun":"Gunasekhar","Sainikudu":"Gunasekhar","Rudhramadevi":"Gunasekhar","Shaakuntalam":"Gunasekhar","Athanokkade":"Surender Reddy","Ashok":"Surender Reddy","Athidhi":"Surender Reddy","Kick":"Surender Reddy","Oosaravelli":"Surender Reddy","Race Gurram":"Surender Reddy","Kick 2":"Surender Reddy","Dhruva":"Surender Reddy","Sye Raa Narasimha Reddy":"Surender Reddy","Agent":"Surender Reddy","Don Seenu":"Gopichand Malineni","Balupu":"Gopichand Malineni","Pandaga Chesko":"Gopichand Malineni","Winner":"Gopichand Malineni","Krack":"Gopichand Malineni","Veera Simha Reddy":"Gopichand Malineni","Solo":"Parasuram","Sarocharu":"Parasuram","Srirastu Subhamastu":"Parasuram","Geetha Govindam":"Parasuram","Sarkaru Vaari Paata":"Parasuram","Family Star":"Parasuram","Ee Rojullo":"Maruthi","Bus Stop":"Maruthi","Bhale Bhale Magadivoy":"Maruthi","Babu Bangaram":"Maruthi","Mahanubhavudu":"Maruthi","Prati Roju Pandage":"Maruthi","Tholi Prema (2018)":"Venky Atluri","Mr. Majnu":"Venky Atluri","Rang De":"Venky Atluri","Sir":"Venky Atluri","Lucky Baskhar":"Venky Atluri","Arjun Reddy":"Sandeep Reddy Vanga","Kabir Singh":"Sandeep Reddy Vanga","Animal":"Sandeep Reddy Vanga","Ugramm":"Prashanth Neel","KGF: Chapter 1":"Prashanth Neel","KGF: Chapter 2":"Prashanth Neel","Salaar: Part 1 – Ceasefire":"Prashanth Neel","Shiva":"Ram Gopal Varma","Kshana Kshanam":"Ram Gopal Varma","Gaayam":"Ram Gopal Varma","Anaganaga Oka Roju":"Ram Gopal Varma","Satya":"Ram Gopal Varma","Rangeela":"Ram Gopal Varma","Company":"Ram Gopal Varma","Adavi Ramudu":"K. Raghavendra Rao","Jagadeka Veerudu Athiloka Sundari":"K. Raghavendra Rao","Gharana Mogudu":"K. Raghavendra Rao","Pelli Sandadi":"K. Raghavendra Rao","Annamayya":"K. Raghavendra Rao","Sri Ramadasu":"K. Raghavendra Rao","Gulabi":"Krishna Vamsi","Ninne Pelladata":"Krishna Vamsi","Sindhooram":"Krishna Vamsi","Murari":"Krishna Vamsi","Khadgam":"Krishna Vamsi","Chandamama":"Krishna Vamsi","Chitram":"Teja","Nuvvu Nenu":"Teja","Jayam":"Teja","Nene Raju Nene Mantri":"Teja","Kotha Bangaru Lokam":"Srikanth Addala","Seethamma Vakitlo Sirimalle Chettu":"Srikanth Addala","Mukunda":"Srikanth Addala","Brahmotsavam":"Srikanth Addala","Narappa":"Srikanth Addala","Andala Rakshasi":"Hanu Raghavapudi","Krishna Gaadi Veera Prema Gaadha":"Hanu Raghavapudi","Padi Padi Leche Manasu":"Hanu Raghavapudi","Sita Ramam":"Hanu Raghavapudi","Ninnu Kori":"Shiva Nirvana","Majili":"Shiva Nirvana","Tuck Jagadish":"Shiva Nirvana","Kushi (2023)":"Shiva Nirvana","Awe!":"Prasanth Varma","Kalki (2019)":"Prasanth Varma","Zombie Reddy":"Prasanth Varma","Hanu-Man":"Prasanth Varma","Karthikeya":"Chandoo Mondeti","Premam (2016)":"Chandoo Mondeti","Savyasachi":"Chandoo Mondeti","Karthikeya 2":"Chandoo Mondeti","Thandel":"Chandoo Mondeti","RX 100":"Ajay Bhupathi","Maha Samudram":"Ajay Bhupathi","Mangalavaaram":"Ajay Bhupathi","Power":"Bobby Kolli","Sardaar Gabbar Singh":"Bobby Kolli","Jai Lava Kusa":"Bobby Kolli","Venky Mama":"Bobby Kolli","Waltair Veerayya":"Bobby Kolli","Daaku Maharaaj":"Bobby Kolli","Grahanam":"Mohan Krishna Indraganti","Ashta Chamma":"Mohan Krishna Indraganti","Golconda High School":"Mohan Krishna Indraganti","Gentleman":"Mohan Krishna Indraganti","Sammohanam":"Mohan Krishna Indraganti","V":"Mohan Krishna Indraganti","Malli Raava":"Gowtam Tinnanuri","Jersey":"Gowtam Tinnanuri","Kingdom":"Gowtam Tinnanuri","Mental Madhilo":"Vivek Athreya","Brochevarevarura":"Vivek Athreya","Ante Sundaraniki":"Vivek Athreya","Saripodhaa Sanivaaram":"Vivek Athreya","Pittagoda":"Anudeep K. V.","Jathi Ratnalu":"Anudeep K. V.","Prince":"Anudeep K. V."},"titles":["100% Love","A Aa","Aadi","Aagadu","Acharya","Adavi Ramudu","Adhurs","Adipurush","Agent","Agent Sai Srinivasa Athreya","Agnyaathavaasi","Akhanda","Ala Modalaindi","Ala Vaikunthapurramuloo","Amma Nanna O Tamila Ammayi","Anaganaga Oka Roju","Anand","Anandam","Andala Rakshasi","Animal","Annamayya","Ante Sundaraniki","Aravinda Sametha Veera Raghava","Arjun","Arjun Reddy","Arundhati","Arya","Arya 2","Ashok","Ashta Chamma","Athadu","Athanokkade","Athidhi","Attarintiki Daredi","Awe!","Baadshah","Baahubali 2: The Conclusion","Baahubali: The Beginning","Baasha","Babu Bangaram","Baby","Badri","Badrinath","Balupu","Bhadra","Bhagavanth Kesari","Bhale Bhale Magadivoy","Bharat Ane Nenu","Bheemla Nayak","Bheeshma","Billa","Bommarillu","Brahmotsavam","Brindavanam","Brochevarevarura","Bunny","Bus Stop","Businessman","Chandamama","Chatrapathi","Chennakesava Reddy","Chirutha","Chitram","Choodalani Vundi","Company","Daaku Maharaaj","Darling","Dasara","Dear Comrade","Desamuduru","Devara: Part 1","Dhamaka","Dhee","Dhruva","Dil","Don Seenu","Dookudu","Duvvada Jagannadham","Ee Rojullo","Eega","Evaru","F2: Fun and Frustration","F3: Fun and Frustration","Family Star","Fidaa","Gaayam","Gabbar Singh","Gaddalakonda Ganesh","Gamyam","Gang Leader","Gangotri","Gautamiputra Satakarni","Geetha Govindam","Geethanjali","Gentleman","Ghajini","Gharana Mogudu","Godavari","Golconda High School","Goodachari","Grahanam","Gudumba Shankar","Gulabi","Gunde Jaari Gallanthayyinde","Guntur Kaaram","Hanu-Man","Happy","Happy Days","Hi Nanna","Idiot","Indra","Itlu Sravani Subramanyam","Jagadam","Jagadeka Veerudu Athiloka Sundari","Jai Lava Kusa","Jailer","Jalsa","Janatha Garage","Jathi Ratnalu","Jaya Janaki Nayaka","Jayam","Jersey","Julayi","KGF: Chapter 1","KGF: Chapter 2","Kabir Singh","Kalki (2019)","Kalki 2898 AD","Kanche","Kandireega","Kantri","Karthikeya","Karthikeya 2","Katamarayudu","Khadgam","Khaidi No. 150","Khaleja","Kick","Kick 2","King","Kingdom","Kondapolam","Kotha Bangaru Lokam","Krack","Krishna","Krishna Gaadi Veera Prema Gaadha","Krishnam Vande Jagadgurum","Kshana Kshanam","Kshanam","Kuberaa","Kushi","Kushi (2023)","Lakshmi","Leader","Legend","Leo","Life Is Beautiful","Liger","Love Story","Lucky Baskhar","Magadheera","Maha Samudram","Mahanati","Mahanubhavudu","Maharshi","Majili","Major","Malli Raava","Malliswari","Manam","Mangalavaaram","Manmadhudu","Maryada Ramanna","Master","Mathu Vadalara","Mental Madhilo","Mirapakay","Mirchi","Mr. Bachchan","Mr. Majnu","Mr. Perfect","Mukunda","Munna","Murari","Naayak","Nannaku Prematho","Narappa","Narasimha","Narasimha Naidu","Nene Raju Nene Mantri","Neninthe","Nenokkadine","Nenu Local","Nenu Sailaja","Ninne Pelladata","Ninnu Kori","Nuvve Nuvve","Nuvvostanante Nenoddantana","Nuvvu Naaku Nachav","Nuvvu Nenu","Okkadu","Oopiri","Oosaravelli","Orange","Padi Padi Leche Manasu","Pandaga Chesko","Panjaa","Parugu","Pataas","Pelli Choopulu","Pelli Sandadi","Pittagoda","Pokiri","Power","Prati Roju Pandage","Premam","Premam (2016)","Prince","Pushpa 2: The Rule","Pushpa: The Rise","RRR","RX 100","Race Gurram","Racha","Radhe Shyam","Raja the Great","Ramayya Vasthavayya","Rang De","Rangasthalam","Rangeela","Rarandoi Veduka Chudham","Ready","Rebel","Robo","Rudhramadevi","Run Raja Run","S/O Satyamurthy","Saaho","Sainikudu","Salaar: Part 1 – Ceasefire","Sammohanam","Sankranthiki Vasthunam","Sardaar Gabbar Singh","Sarileru Neekevvaru","Saripodhaa Sanivaaram","Sarkaru Vaari Paata","Sarocharu","Sarrainodu","Satya","Savyasachi","Seethamma Vakitlo Sirimalle Chettu","Shaakuntalam","Shankar Dada M.B.B.S.","Shiva","Shivaji","Shivamani","Shock","Shyam Singha Roy","Simha","Simhadri","Sindhooram","Sir","Sita Ramam","Soggade Chinni Nayana","Solo","Spyder","Sri Ramadasu","Srimanthudu","Srirastu Subhamastu","Stalin","Student No. 1","Subramanyam for Sale","Supreme","Sye","Sye Raa Narasimha Reddy","Tagore","Taxiwaala","Teen Maar","Temper","Thammudu","Thandel","Tholi Prema","Tholi Prema (2018)","Tuck Jagadish","Tulasi","Ugramm","Uppena","V","Vakeel Saab","Varisu","Varsham","Varudu","Vedam","Veera Simha Reddy","Venky","Venky Mama","Vikramarkudu","Vinaya Vidheya Rama","Waltair Veerayya","Winner","World Famous Lover","Yamadonga","Ye Maaya Chesave","Yevade Subramanyam","Yevadu","Yogi","Zombie Reddy","iSmart Shankar"]};
+
+  // ── the puzzles, in order on the page ──
+  const PUZ = [
+    { id: 'hol',  name: 'Higher or Lower', short: 'Higher or Lower', g: 'H', k: 'var(--blue)',   line: "Today's 10 match-ups" },
+    { id: 'dlg',  name: 'Dialogue of the Day', short: 'Dialogue', g: 'D', k: 'var(--accent)', line: 'Guess the movie from the line' },
+    { id: 'sto',  name: 'Story of the Day', short: 'Story', g: 'S', k: 'var(--accent2)', line: 'Guess the film from its plot' },
+    { id: 'cast', name: 'Cast of the Day', short: 'Cast', g: 'C', k: 'var(--maroon)', kt: 'var(--maroonT)', line: 'Hero, heroine, music director' },
+    { id: 'hang', name: 'Hangman of the Day', short: 'Hangman', g: '_', k: 'var(--yellow)', line: 'Guess the title letter by letter' },
+  ];
+  // Hangman of the day: titles to pick from (moves to data/movies.js in the data migration)
+  const HANG = ["Geethanjali", "Shiva", "Gharana Mogudu", "Hello Brother", "Ninne Pelladata", "Annamayya", "Tholi Prema", "Narasimha", "Thammudu", "Badri", "Kushi", "Murari", "Narasimha Naidu", "Nuvvu Naaku Nachav", "Student No. 1", "Aadi", "Chennakesava Reddy", "Idiot", "Indra", "Jayam", "Khadgam", "Manmadhudu", "Gangotri", "Okkadu", "Simhadri", "Tagore", "Arjun", "Arya", "Gudumba Shankar", "Malliswari", "Shankar Dada M.B.B.S.", "Varsham", "Venky", "Athadu", "Balu", "Bhadra", "Bunny", "Chatrapathi", "Annavaram", "Ashok", "Bommarillu", "Godavari", "Happy", "Pokiri", "Stalin", "Vikramarkudu", "Athidhi", "Chirutha", "Desamuduru", "Dhee", "Dubai Seenu", "Happy Days", "Shivaji", "Yamadonga", "Ashta Chamma", "Bujjigadu", "Jalsa", "King", "Kotha Bangaru Lokam", "Parugu", "Ready", "Surya S/O Krishnan", "Arundhati", "Arya 2", "Billa", "Kick", "Magadheera", "Adhurs", "Brindavanam", "Darling", "Khaleja", "Leader", "Maryada Ramanna", "Orange", "Simha", "Vedam", "Ye Maaya Chesave", "100% Love", "Ala Modalaindi", "Badrinath", "Dookudu", "Mirapakay", "Mr. Perfect", "Panjaa", "Businessman", "Eega", "Gabbar Singh", "Ishq", "Julayi", "Racha", "Rebel", "Attarintiki Daredi", "Baadshah", "Balupu", "Mirchi", "Naayak", "Aagadu", "Drushyam", "Govindudu Andarivadele", "Karthikeya", "Legend", "Manam", "Race Gurram", "Run Raja Run", "Yevadu", "Bhale Bhale Magadivoy", "Gopala Gopala", "Premam", "Rudhramadevi", "S/O Satyamurthy", "Srimanthudu", "Temper", "Babu Bangaram", "Brahmotsavam", "Dhruva", "Janatha Garage", "Kshanam", "Nannaku Prematho", "Nenu Sailaja", "Oopiri", "Pelli Choopulu", "Sardaar Gabbar Singh", "Sarrainodu", "Soggade Chinni Nayana", "Arjun Reddy", "Fidaa", "Gautamiputra Satakarni", "Jai Lava Kusa", "Katamarayudu", "Khaidi No. 150", "Middle Class Abbayi", "Nenu Local", "Ninnu Kori", "Raja The Great", "Spyder", "Agnyaathavaasi", "Bharat Ane Nenu", "Ee Nagaraniki Emaindi", "Geetha Govindam", "Goodachari", "Mahanati", "Rangasthalam", "Taxiwaala", "Dear Comrade", "Evaru", "Gaddalakonda Ganesh", "Gang Leader", "iSmart Shankar", "Jersey", "Maharshi", "Majili", "Mathu Vadalara", "Prati Roju Pandage", "Saaho", "Sye Raa Narasimha Reddy", "Vinaya Vidheya Rama", "Ala Vaikunthapurramuloo", "Bheeshma", "Color Photo", "Sarileru Neekevvaru", "World Famous Lover", "Akhanda", "Jathi Ratnalu", "Krack", "Love Story", "Shyam Singha Roy", "Uppena", "Vakeel Saab", "Acharya", "Ante Sundaraniki", "Bangarraju", "Bheemla Nayak", "Bimbisara", "Dhamaka", "DJ Tillu", "GodFather", "Karthikeya 2", "Liger", "Major", "Radhe Shyam", "Sarkaru Vaari Paata", "Sita Ramam", "Adipurush", "Baby", "Bhagavanth Kesari", "Bhola Shankar", "Dasara", "Hi Nanna", "Veera Simha Reddy", "Virupaksha", "Waltair Veerayya", "Family Star", "Guntur Kaaram", "Hanu-Man", "Kalki 2898 AD", "Lucky Baskhar", "Saripodhaa Sanivaaram", "Tillu Square", "Daaku Maharaj", "Game Changer", "Hari Hara Veera Mallu", "Kingdom", "Kuberaa", "Mirai", "Sankranthiki Vasthunnam", "Thandel", "They Call Him OG"];
+  const TRIES = 3, HOL_ROUNDS = 10;
+  const TRY_WORD = ['FIRST TRY', 'SECOND TRY', 'FINAL TRY'];   // what a win on try 1, 2 or 3 is called
+
+  // ── theme ──
+  const sysDark = matchMedia('(prefers-color-scheme: dark)');
+  function theme() {
+    let pref = 'system'; try { pref = localStorage.getItem('cf_theme') || 'system'; } catch (e) {}
+    const t = pref === 'system' ? (sysDark.matches ? 'dark' : 'light') : pref;
+    document.documentElement.dataset.theme = t;
+    document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#f4f4f8' : '#0a0a0f';
+  }
+  theme(); sysDark.addEventListener('change', theme);
+
+  // ── the day, in India time ──
+  const IST = 330 * 60000;
+  const dayKey = (ms = Date.now()) => new Date(ms + IST).toISOString().slice(0, 10);
+  const dayNum = k => Math.round((Date.parse(k) - Date.parse('2020-01-01')) / 864e5);   // a running day count
+  let TODAY = dayKey(), forced = false;
+  const dailyNo = () => dayNum(TODAY) - dayNum(LAUNCH) + 1;
+
+  // ── same random numbers on every phone for the same day ──
+  function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function order(n, seed) { const r = rng(seed), a = [...Array(n).keys()]; for (let i = n - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  // each list goes through in a fixed shuffled order, one a day, so nothing repeats until the whole list has come up
+  function today(list, seed, avoid) {
+    const o = order(list.length, seed), d = dayNum(TODAY);
+    for (let k = 0; k < list.length; k++) { const it = list[o[(d + k) % list.length]]; if (!avoid.includes(it[0])) return it; }
+    return list[o[d % list.length]];
+  }
+  let P = {};
+  function buildToday() {
+    const taken = [];
+    P.dlg = today(DATA.dlg, 11, taken); taken.push(P.dlg[0]);
+    P.sto = today(DATA.sto, 23, taken); taken.push(P.sto[0]);
+    P.cast = today(DATA.cast, 37, taken); taken.push(P.cast[0]);
+    P.hang = today(HANG.map(t => [t]), 53, taken);
+    P.hol = holRun();
+  }
+  // Higher or Lower: 10 fixed match-ups for the day, stat changes every round
+  const STATS = [
+    { k: 1, q: 'Which came out LATER?', lab: 'Release year', fmt: v => String(v), ok: (a, b) => Math.abs(a - b) >= 2 },
+    { k: 2, q: 'Which is rated HIGHER?', lab: 'IMDb rating', fmt: v => v.toFixed(1), ok: (a, b) => Math.abs(a - b) >= .6 },
+    { k: 3, q: 'Which has MORE songs?', lab: 'Number of songs', fmt: v => v + ' songs', ok: (a, b) => Math.abs(a - b) >= 2 },
+    { k: 4, q: 'Which is LONGER?', lab: 'Runtime', fmt: v => v + ' min', ok: (a, b) => Math.abs(a - b) >= 12 },
+  ];
+  function holRun() {
+    const r = rng(dayNum(TODAY) * 7919 + 5), M = DATA.hol, out = [], seen = new Set();
+    for (let i = 0; i < HOL_ROUNDS; i++) {
+      const st = STATS[i % STATS.length];
+      for (let t = 0; t < 2000; t++) {
+        const a = M[Math.floor(r() * M.length)], b = M[Math.floor(r() * M.length)];
+        if (a === b || !st.ok(a[st.k], b[st.k]) || (t < 1500 && (seen.has(a[0]) || seen.has(b[0])))) continue;
+        out.push([a, b]); seen.add(a[0]); seen.add(b[0]); break;
+      }
+    }
+    return out;
+  }
+
+  // ── what this phone has played (until accounts) ──
+  let S = { days: {} };
+  try { S = JSON.parse(localStorage.getItem('cf_daily') || '{"days":{}}'); if (!S.days) S = { days: {} }; } catch (e) {}
+  const day = () => (S.days[TODAY] = S.days[TODAY] || {});
+  function save() {
+    const keys = Object.keys(S.days).sort(); while (keys.length > 400) delete S.days[keys.shift()];   // keep about a year
+    try { localStorage.setItem('cf_daily', JSON.stringify(S)); } catch (e) {}
+  }
+  const finished = (k, id) => !!(S.days[k] && S.days[k][id] && S.days[k][id].done);
+  function streak(test) {   // days in a row, counting today if done, else from yesterday
+    let n = 0, ms = Date.parse(TODAY);
+    if (!test(TODAY)) ms -= 864e5;
+    for (;;) { const k = new Date(ms).toISOString().slice(0, 10); if (!test(k)) break; n++; ms -= 864e5; }
+    return n;
+  }
+  const streakOf = id => streak(k => finished(k, id));
+  const streakAll = () => streak(k => PUZ.some(p => finished(k, p.id)));
+
+  // ═════ TODAY ═════
+  function resultText(id) {
+    const r = day()[id]; if (!r || !r.done) return null;
+    if (id === 'hol') return r.s + '/' + HOL_ROUNDS;
+    if (id === 'hang') return r.win ? 'GOT IT' : 'CUT';
+    return r.win ? 'GOT IT' : 'MISSED';
+  }
+  function drawToday() {
+    $('dno').textContent = 'DAILY #' + dailyNo();
+    $('ddate').textContent = new Date(Date.parse(TODAY)).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).toUpperCase();
+    const all = streakAll();
+    $('sAll').textContent = all;
+    const doneN = PUZ.filter(p => finished(TODAY, p.id)).length;
+    $('marks').innerHTML = PUZ.map(p => `<i class="${finished(TODAY, p.id) ? 'on' : ''}" style="--k:${p.k}"></i>`).join('') + `<small>${doneN === PUZ.length ? 'ALL DONE TODAY' : doneN + ' OF ' + PUZ.length + ' TODAY'}</small>`;
+    $('list').innerHTML = PUZ.map(p => {
+      const r = day()[p.id], res = resultText(p.id), sk = streakOf(p.id);
+      const cls = res ? ' done ' + (p.id === 'hol' ? (r.s >= 5 ? 'won' : 'lost') : (r.win ? 'won' : 'lost')) : '';
+      const wide = p.id === 'hol' ? ' wide' : '';
+      const st = `<span class="st">${res || (r && r.g && r.g.length || r && r.r ? 'GO ON' : 'PLAY')}</span>`;
+      const tx = `<span class="tx"><b>${esc(p.short)}</b>${wide ? `<small>${esc(p.line)}</small>` : ''}<em>${sk ? sk + (sk === 1 ? ' DAY' : ' DAYS') + ' IN A ROW' : 'NO STREAK YET'}</em></span>`;
+      return `<button class="pz${wide}${cls}" type="button" data-pz="${p.id}" style="--k:${p.k}${p.kt ? ';--kt:' + p.kt : ''}">
+        ${wide ? `<span class="g">${p.g}</span>${tx}${st}` : `<span class="row"><span class="g">${p.g}</span>${st}</span>${tx}`}</button>`;
+    }).join('');
+    $('shareBtn').disabled = !doneN;
+  }
+  function tickCountdown() {
+    if (!forced && dayKey() !== TODAY) { TODAY = dayKey(); buildToday(); show('s-today'); drawToday(); }
+    const now = Date.now() + IST, left = 864e5 - (now % 864e5);
+    const h = Math.floor(left / 36e5), m = Math.floor(left % 36e5 / 6e4), s = Math.floor(left % 6e4 / 1e3);
+    $('cd').textContent = [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
+  }
+
+  // ═════ GUESS PUZZLES ═════
+  const norm = t => String(t).toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+  const TITLES = DATA.titles.map(t => ({ t, n: norm(t), w: norm(t).split(' ') }));
+  let cur = null, sugIdx = -1;
+  function answerOf(id) { return P[id][0]; }
+  // clue 1: something real about the movie when we know it, otherwise the shape of the title. Clue 2: first letters.
+  function shape(t, first) { return t.split(' ').map(w => [...w].map((c, i) => /[A-Za-z0-9]/.test(c) ? (first && i === 0 ? c.toUpperCase() : '_') : c).join(' ')).join('   '); }
+  function clues(id) {
+    const a = answerOf(id), c = DATA.cast.find(x => x[0] === a), dir = DATA.dir[a], h = DATA.hol.find(x => x[0] === a), out = [];
+    if (id === 'cast') { if (dir) out.push(['DIRECTOR', dir]); else if (h) out.push(['RELEASED', String(h[1])]); }
+    else { if (c) out.push(['STARRING', c[1]]); else if (dir) out.push(['DIRECTOR', dir]); else if (h) out.push(['RELEASED', String(h[1])]); }
+    if (!out.length) out.push(['LETTERS', shape(a, false)]);
+    out.push(['TITLE', shape(a, true)]);
+    return out.slice(0, 2);
+  }
+  function openGuess(id) {
+    const p = PUZ.find(x => x.id === id); cur = p;
+    const sc = $('s-guess'); sc.style.setProperty('--k', p.k); p.kt ? sc.style.setProperty('--kt', p.kt) : sc.style.removeProperty('--kt');
+    $('gTitle').textContent = p.name.toUpperCase();
+    const a = P[id];
+    if (id === 'cast') $('pzl').innerHTML = `<div class="lbl"><i></i>STARRING</div><div class="castb"><b data-fit>${esc(a[1].replace(', ', ' & '))}</b><span>AND</span><b data-fit>${esc(a[2])}</b><div class="mu">MUSIC BY<b data-fit data-small>${esc(a[3])}</b></div></div>`;
+    else $('pzl').innerHTML = `<div class="lbl"><i></i>${id === 'dlg' ? 'WHICH MOVIE SAID IT?' : 'WHICH MOVIE IS THIS?'}</div>${id === 'dlg' ? '<div class="quote">&ldquo;</div>' : ''}<div class="line" data-line>${esc(a[1])}</div>`;
+    $('inp').value = ''; closeSugs();
+    show('s-guess'); drawGuess(true);
+  }
+  function drawGuess(first) {
+    const id = cur.id, r = day()[id] || {}, g = r.g || [], cl = clues(id), over = !!r.done;
+    $('tries').innerHTML = Array.from({ length: TRIES }, (_, i) => `<i class="${i < g.length ? (r.win && i === g.length - 1 ? 'ok' : 'used') : ''}"></i>`).join('');
+    const wrong = g.filter(x => x !== answerOf(id));
+    const shown = over ? Math.min(wrong.length, 2) : Math.min(wrong.length, 2);
+    $('clues').innerHTML = cl.slice(0, shown).map(([k, v]) => `<div class="clue"><small>${k}</small><span>${esc(v)}</span></div>`).join('');
+    $('wrongs').innerHTML = wrong.map(w => `<span>${esc(w)}</span>`).join('');
+    const res = $('res');
+    if (over) {
+      res.hidden = false; res.className = 'res' + (r.win ? '' : ' lost');
+      res.innerHTML = r.win ? `<h3>GOT IT ${TRY_WORD[g.length - 1]}</h3><div class="ans">${esc(answerOf(id))}</div>`
+                            : `<h3>OUT OF TRIES</h3><small>THE ANSWER WAS</small><div class="ans">${esc(answerOf(id))}</div>`;
+      $('ask').hidden = true; $('doneBtn').hidden = false; $('doneBtn').style.setProperty('--k', cur.k);
+      $('clues').hidden = r.win; $('wrongs').hidden = r.win;
+    } else { res.hidden = true; $('ask').hidden = false; $('doneBtn').hidden = true; $('clues').hidden = false; $('wrongs').hidden = false; }
+    fitGuess();
+  }
+  function matches(q) {
+    const n = norm(q); if (!n) return [];
+    const ws = n.split(' ');
+    return TITLES.filter(t => ws.every(w => t.w.some(x => x.startsWith(w)) || t.n.includes(w)))
+      .sort((a, b) => (b.n.startsWith(n) - a.n.startsWith(n)) || a.t.length - b.t.length).slice(0, 5);
+  }
+  function drawSugs() {
+    const q = $('inp').value, m = matches(q), box = $('sugs');
+    const exact = TITLES.find(t => t.n === norm(q));
+    $('guessBtn').disabled = !exact && !(m.length === 1);
+    if (!q.trim()) return closeSugs();
+    sugIdx = -1;
+    box.hidden = false;
+    box.innerHTML = m.length ? m.map(t => `<button type="button" data-sug="${esc(t.t)}">${esc(t.t)}</button>`).join('') : '<div class="none">No movie by that name in our list</div>';
+  }
+  function closeSugs() { $('sugs').hidden = true; $('sugs').innerHTML = ''; }
+  function submit(title) {
+    const id = cur.id, r = (day()[id] = day()[id] || { g: [] }); r.g = r.g || [];
+    if (r.done) return;
+    const t = TITLES.find(x => x.n === norm(title)) || (matches(title).length === 1 ? matches(title)[0] : null);
+    if (!t) return;
+    if (r.g.includes(t.t)) { flash('Already tried that one'); return; }
+    r.g.push(t.t);
+    if (t.t === answerOf(id)) { r.done = 1; r.win = 1; }
+    else if (r.g.length >= TRIES) { r.done = 1; r.win = 0; }
+    save(); $('inp').value = ''; closeSugs(); $('guessBtn').disabled = true;
+    if (!r.done) { try { navigator.vibrate && navigator.vibrate([15, 40, 15]); } catch (e) {} }
+    if (r.done) $('inp').blur();
+    drawGuess();
+  }
+  let flashT = null;
+  function flash(msg) { const b = $('sugs'); b.hidden = false; b.innerHTML = `<div class="none">${esc(msg)}</div>`; clearTimeout(flashT); flashT = setTimeout(closeSugs, 1400); }
+  // make the puzzle fit above the input, so nothing scrolls
+  function fitGuess() {
+    const st = $('stage'), line = st.querySelector('[data-line]'), names = [...st.querySelectorAll('[data-fit]')];
+    if (line) {
+      let fs = Math.min(Math.max(innerWidth * .05, 16), 26); line.style.fontSize = fs + 'px';
+      while (st.scrollHeight > st.clientHeight + 1 && fs > 12) { fs -= 1; line.style.fontSize = fs + 'px'; }
+    }
+    if (names.length) {
+      let fs = Math.min(innerWidth * .13, innerHeight * .075, 64);
+      const set = () => names.forEach(n => { n.style.fontSize = (n.hasAttribute('data-small') ? fs * .55 : fs) + 'px'; });
+      set();
+      while ((st.scrollHeight > st.clientHeight + 1 || names.some(n => n.scrollWidth > n.clientWidth + 1)) && fs > 16) { fs -= 2; set(); }
+    }
+  }
+  // keyboard open: compact layout (the visible area shrinks)
+  const vv = window.visualViewport;
+  function onVV() {
+    const kb = !!vv && vv.height < innerHeight * .78;
+    $('s-guess').classList.toggle('kb', kb);
+    if ($('s-guess').classList.contains('on')) fitGuess();
+  }
+  if (vv) vv.addEventListener('resize', onVV);
+
+  // ═════ HIGHER OR LOWER ═════
+  let hLock = false, hTimer = null;
+  function openHol() { show('s-hol'); const r = day().hol; if (r && r.done) return holEnd(true); holRound(); }
+  function holRound() {
+    const r = (day().hol = day().hol || { r: 0, s: 0 }), i = r.r, pr = P.hol[i];
+    $('hScore').textContent = r.s;
+    if (!pr) return holFinish();
+    const st = STATS[i % STATS.length]; hLock = false;
+    $('qs').textContent = 'ROUND ' + (i + 1) + ' OF ' + HOL_ROUNDS + ' · ' + st.lab.toUpperCase();
+    $('qh').innerHTML = esc(st.q).replace(/\b([A-Z]{3,})\b/, '<em>$1</em>');
+    $('pair').innerHTML = pr.map((m, k) => `<button type="button" class="m" data-h="${k}"><span class="nm">${esc(m[0])}</span><span class="val">${esc(st.fmt(m[st.k]))}</span></button>`).join('') + '<span class="vs">VS</span>';
+    document.querySelectorAll('#pair .nm').forEach(n => { let fs = parseFloat(getComputedStyle(n).fontSize); while (n.scrollWidth > n.clientWidth + 1 && fs > 18) { fs -= 2; n.style.fontSize = fs + 'px'; } });
+  }
+  function holTap(k) {
+    if (hLock) return; hLock = true;
+    const r = day().hol, i = r.r, st = STATS[i % STATS.length], pr = P.hol[i], win = pr[0][st.k] > pr[1][st.k] ? 0 : 1, good = k === win;
+    document.querySelectorAll('#pair .m').forEach((e, j) => { e.classList.add('rev', 'off', j === win ? 'win' : j === k ? 'wrong' : 'lose'); });
+    r.r = i + 1; if (good) r.s++; else r.done = 1;
+    if (good && r.r >= HOL_ROUNDS) r.done = 1;
+    save(); $('hScore').textContent = r.s;
+    hTimer = setTimeout(() => (r.done ? holEnd() : holRound()), good ? 1300 : 1600);
+  }
+  function holFinish() { const r = day().hol; r.done = 1; save(); holEnd(); }
+  function holEnd() {
+    const r = day().hol;
+    $('hBig').innerHTML = r.s + '<span>/' + HOL_ROUNDS + '</span>';
+    $('hMsg').textContent = r.s >= HOL_ROUNDS ? 'PERFECT RUN' : r.s >= 7 ? 'GREAT RUN' : r.s >= 4 ? 'NOT BAD' : 'TOUGH ONE TODAY';
+    $('hres').classList.add('on');
+  }
+
+  // ═════ HANGMAN OF THE DAY ═════
+  let HM = null;
+  function openHang() {
+    if (!HM) HM = CinefiedHangman.create($('hmBoard'), {
+      onGuess(S) { const r = day().hang = day().hang || { g: [] }; r.g = S.guessed.slice(); r.m = S.wrong; if (S.over) { r.done = 1; r.win = S.over === 'win' ? 1 : 0; } save(); },
+      onEnd() { hangResult(); },
+    });
+    const r = day().hang || {};
+    show('s-hang'); $('hmRes').hidden = true; $('hmDone').hidden = true;
+    HM.start(P.hang[0], r.g || []);
+    if (r.done) hangResult();
+  }
+  function hangResult() {
+    const r = day().hang || {}, sk = streakOf('hang'), res = $('hmRes');
+    res.hidden = false; $('hmDone').hidden = false; res.className = 'hmres' + (r.win ? '' : ' lost');
+    res.innerHTML = r.win
+      ? `<h3>GOT IT</h3><small>${r.m ? r.m + (r.m === 1 ? ' MISS' : ' MISSES') : 'NO MISSES'} · ${sk} ${sk === 1 ? 'DAY' : 'DAYS'} IN A ROW</small>`
+      : `<h3>CUT!</h3><small>A NEW TITLE AT MIDNIGHT</small>`;
+  }
+
+  // ═════ SHARE ═════
+  async function share() {
+    const lines = ['Cinefied Daily #' + dailyNo()];
+    PUZ.forEach(p => { const r = day()[p.id]; if (!r || !r.done) return;
+      if (p.id === 'hang') return void lines.push('Hangman - ' + (r.win ? 'got it, ' + (r.m ? r.m + (r.m === 1 ? ' miss' : ' misses') : 'no misses') : 'cut'));
+      lines.push((p.id === 'hol' ? 'Higher or Lower - ' + r.s + ' of ' + HOL_ROUNDS : p.short + ' ' + (r.win ? '- got it ' + TRY_WORD[r.g.length - 1].toLowerCase() : '- missed'))); });
+    lines.push('Streak ' + streakAll()); lines.push(SITE);
+    const text = lines.join('\n');
+    if (navigator.share) { try { await navigator.share({ text }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(text); toast('Copied. Paste it anywhere'); } catch (e) { toast(text); }
+  }
+  let tT = null;
+  function toast(m) { let t = $('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); } t.textContent = m; t.classList.add('show'); clearTimeout(tT); tT = setTimeout(() => t.classList.remove('show'), 2200); }
+
+  // ═════ wiring ═════
+  function show(id) { document.querySelectorAll('#game .gs').forEach(s => s.classList.toggle('on', s.id === id)); }
+  function back() { clearTimeout(hTimer); $('hres').classList.remove('on'); $('inp').blur(); closeSugs(); show('s-today'); drawToday(); }
+  const closeSheet = () => { $('rulesSheet').classList.remove('open'); $('scrim').classList.remove('open'); };
+  $('inp').addEventListener('input', drawSugs);
+  $('inp').addEventListener('keydown', e => {
+    const b = [...$('sugs').querySelectorAll('[data-sug]')]; if (!b.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); sugIdx = (sugIdx + (e.key === 'ArrowDown' ? 1 : -1) + b.length) % b.length; b.forEach((x, i) => x.classList.toggle('hi', i === sugIdx)); }
+  });
+  $('form').addEventListener('submit', e => {
+    e.preventDefault();
+    const b = [...$('sugs').querySelectorAll('[data-sug]')];
+    if (sugIdx >= 0 && b[sugIdx]) return submit(b[sugIdx].dataset.sug);
+    submit($('inp').value);
+  });
+  // tapping a suggestion must not close the keyboard first
+  document.addEventListener('pointerdown', e => { if (e.target.closest('[data-sug]')) e.preventDefault(); });
+  document.addEventListener('click', e => {
+    const t = e.target;
+    const s = t.closest('[data-sug]'); if (s) return submit(s.dataset.sug);
+    const pz = t.closest('[data-pz]');
+    if (pz) { const id = pz.dataset.pz, r = day()[id]; if (id === 'hol') return openHol(); if (id === 'hang') return openHang(); return openGuess(id); }
+    const h = t.closest('#pair .m'); if (h) return holTap(+h.dataset.h);
+    if (t.closest('[data-back]')) return back();
+    if (t.closest('#shareBtn')) return share();
+    if (t.closest('#homeBtn')) return void history.back();
+    if (t.closest('[data-rules]')) { $('rulesSheet').classList.add('open'); $('scrim').classList.add('open'); return; }
+    if (t.closest('#scrim') || t.closest('[data-close]')) return closeSheet();
+  });
+  addEventListener('resize', () => { if ($('s-guess').classList.contains('on')) fitGuess(); });
+
+  buildToday(); drawToday(); tickCountdown(); setInterval(tickCountdown, 1000);
+  // opened from the home page's Daily tab with a puzzle picked (daily.html#dlg): go straight to it
+  const want = location.hash.slice(1);
+  if (PUZ.some(p => p.id === want)) { history.replaceState(null, '', location.pathname + location.search); want === 'hol' ? openHol() : want === 'hang' ? openHang() : openGuess(want); }
+  // test helper: ?day=2026-12-01 shows that day's puzzles (does not change what is saved for other days)
+  const qd = new URLSearchParams(location.search).get('day');
+  if (qd && /^\d{4}-\d{2}-\d{2}$/.test(qd)) { TODAY = qd; forced = true; buildToday(); drawToday(); }
+})();
+</script>
+</body>
+</html>

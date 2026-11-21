@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Questions Only · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  /* Questions Only: one phone in the middle shows a scene. Everyone acts it out speaking only in questions. */
+  :root{--c:#6c5ce7}
+  [data-theme=light]{--c:#5a4bd6}
+  [hidden]{display:none!important}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{touch-action:manipulation}
+  .gs{display:none;position:fixed;inset:0;flex-direction:column;
+      padding:calc(10px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
+  .gs.on{display:flex;animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  .wrap{flex:1;min-height:0;display:flex;flex-direction:column;max-width:460px;width:100%;margin:0 auto}
+  .go{background:var(--c);color:#fff;box-shadow:0 10px 26px color-mix(in srgb,var(--c) 35%,transparent)}
+  .btn.go{background:var(--c)}
+  .hero h1{overflow-wrap:normal;word-break:normal;font-size:clamp(44px,min(15vw,9dvh),84px)}
+
+  /* the scene */
+  #s-play{background:radial-gradient(70% 45% at 20% 10%,color-mix(in srgb,var(--c) 12%,transparent),transparent 70%),var(--bg)}
+  .top{display:flex;justify-content:space-between;align-items:center;min-height:42px;max-width:760px;width:100%;margin:0 auto}
+  .top small{font-size:11px;letter-spacing:2px;color:var(--muted)}
+  .stage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(12px,2.6dvh,24px);max-width:760px;width:100%;margin:0 auto;padding-bottom:8px}
+  .lbl{font-size:11px;letter-spacing:4px;color:var(--muted)}
+  .lbl i{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c);margin-right:10px;vertical-align:1px}
+  #scene{font-family:var(--display);font-weight:400;letter-spacing:1.5px;line-height:1;color:var(--text);text-wrap:balance;overflow-wrap:normal;word-break:normal;max-width:100%}
+  .roles{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
+  .roles small{font-size:10.5px;letter-spacing:3px;color:var(--c)}
+  .chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+  .chips span{font-size:13px;padding:8px 13px;border-radius:999px;background:var(--surface);border:1px solid var(--border)}
+  .chips span.more{border-style:dashed;color:var(--muted)}
+  .stage.in > *{animation:sIn .5s cubic-bezier(.2,.7,.2,1) both}
+  .stage.in > :nth-child(2){animation-delay:.06s} .stage.in > :nth-child(3){animation-delay:.14s} .stage.in > :nth-child(4){animation-delay:.2s}
+  @keyframes sIn{from{opacity:0;transform:translateY(10px)}}
+  .note{font-size:11.5px;color:var(--muted);line-height:1.55;max-width:34ch}
+  .outrule{font-size:10.5px;color:var(--muted);text-align:center;border:1px dashed var(--border);border-radius:12px;padding:8px 12px;margin:0 auto 10px;max-width:460px;line-height:1.5}
+  .outrule b{color:var(--accent);font-weight:500}
+  .next{width:min(320px,100%);margin:0 auto}
+  @media (orientation:landscape) and (max-height:500px){.stage{gap:8px}.outrule{display:none}.next{width:min(260px,50%)}}
+
+  /* end of game */
+  #s-end{align-items:center;justify-content:center;text-align:center;gap:14px}
+  #s-end h2{font-family:var(--display);font-weight:400;font-size:clamp(40px,10vmin,64px);letter-spacing:3px;line-height:1;color:var(--c)}
+  #s-end p{font-size:12.5px;color:var(--muted);line-height:1.6;max-width:30ch}
+  #s-end .acts{display:flex;flex-direction:column;gap:10px;width:min(320px,100%);margin-top:8px}
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- 1. ENTRY -->
+  <section class="gs on" id="s-home">
+    <div class="bar">
+      <button class="icon-btn" type="button" id="homeBtn" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="chipbtn" type="button" data-rules>How to play</button>
+    </div>
+    <div class="wrap">
+      <div class="hero">
+        <div class="glyph" aria-hidden="true">Q</div>
+        <div class="kind"><i></i>One phone in the middle</div>
+        <h1>QUESTIONS ONLY</h1>
+        <p>Act out a scene, but you can only speak in questions. Slip up and you're out.</p>
+        <div class="facts"><span class="fact">1 phone</span><span class="fact">2+ players</span><span class="fact">No timer</span></div>
+      </div>
+      <button class="btn go" type="button" id="startBtn">START</button>
+    </div>
+  </section>
+
+  <!-- 2. THE SCENE -->
+  <section class="gs" id="s-play">
+    <div class="top">
+      <small id="count"></small>
+      <button class="icon-btn" type="button" id="stopBtn" aria-label="End game"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="stage" id="stage">
+      <div class="lbl"><i></i>THE SCENE</div>
+      <div id="scene"></div>
+      <div class="roles"><small>EXAMPLE ROLES</small><div class="chips" id="roles"></div></div>
+      <p class="note">These are just examples. Pick any character you like, and make up new ones so everyone has a role.</p>
+    </div>
+    <p class="outrule"><b>Out</b> if you make a statement, pause too long, repeat a question, or ask one that makes no sense</p>
+    <button class="btn go next" type="button" id="nextBtn">NEW SCENE</button>
+  </section>
+
+  <!-- 3. GAME OVER -->
+  <section class="gs" id="s-end">
+    <h2>GAME OVER</h2>
+    <p>The last player standing wins. Play again for a fresh set of scenes.</p>
+    <div class="acts">
+      <button class="btn go" type="button" id="againBtn">PLAY AGAIN</button>
+      <button class="btn outline" type="button" id="quitBtn">HOME</button>
+    </div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet ht-sheet" id="rulesSheet" aria-label="How to play"><div class="grab"></div><div id="howto"></div></section>
+
+<script src="core/howto.js?v=0.2.0"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  // ═════════════ SCENES (edit here: s = the situation, r = example roles; players can always add their own) ═════════════
+  const SCENES = [
+    // everyday
+    { s: 'Auto meter meeda godava', r: ['Auto driver', 'Passenger', 'Traffic police'] },
+    { s: 'Pelli choopulu, first meeting', r: ['Ammayi', 'Abbayi', 'Amma', 'Mavayya'] },
+    { s: 'Results roju intlo', r: ['Student', 'Nanna', 'Amma', 'Pakkinti aunty'] },
+    { s: 'Hostel lo raatri 11 ki room check', r: ['Warden', 'Students', 'Watchman'] },
+    { s: 'Software company appraisal meeting', r: ['Manager', 'Employee', 'HR'] },
+    { s: 'Bank lo loan kosam', r: ['Bank manager', 'Customer', 'Agent'] },
+    { s: 'Pelli bhojanam queue', r: ['Caterer', 'Guests', 'Pelli kuthuri nanna'] },
+    { s: 'Train lo berth godava', r: ['TC', 'Passengers'] },
+    { s: 'Parking spot kosam neighbours fight', r: ['Two neighbours', 'Society secretary'] },
+    { s: 'Sankranti muggula pottee', r: ['Judge', 'Participants', 'Atthagaru'] },
+    { s: 'Gully cricket lo out aa kaada', r: ['Batsman', 'Bowler', 'Umpire', 'Ball owner'] },
+    { s: 'Hospital lo appointment late', r: ['Doctor', 'Receptionist', 'Patient'] },
+    { s: 'Exam hall lo copy kotti dorikaadu', r: ['Invigilator', 'Student', 'Principal'] },
+    { s: 'Biryani order late', r: ['Delivery boy', 'Customer', 'Restaurant owner'] },
+    { s: 'Tirupati queue lo line jump', r: ['Devotees', 'TTD staff'] },
+    { s: 'Phone repair shop', r: ['Shop owner', 'Customer', "Customer's friend"] },
+    { s: 'Kooragayala market bargaining', r: ['Kooragayala amma', 'Customer'] },
+    { s: 'Mehendi function lo DJ problem', r: ['DJ', "Bride's sister", 'Babai'] },
+    { s: 'Tuition lo homework cheyyaledu', r: ['Tuition master', 'Students', 'Parent'] },
+    { s: 'RTC bus lo change ledu', r: ['Conductor', 'Passengers'] },
+    { s: 'Gruhapravesham', r: ['Purohitudu', 'Family', 'Relatives'] },
+    { s: 'Birthday surprise plan fail', r: ['Friends', 'Birthday boy'] },
+    { s: 'Rent late ayyindi', r: ['House owner', 'Tenant'] },
+    { s: 'Startup lo interview', r: ['Founder', 'Candidate', 'HR'] },
+    { s: 'Family function lo fake WhatsApp news', r: ['Babai', 'Pinni', 'Cousins'] },
+    // movie-flavoured
+    { s: 'Hero intro song shooting', r: ['Director', 'Hero', 'Choreographer', 'Producer'] },
+    { s: 'Villain den lo hero entry', r: ['Villain', 'Henchmen', 'Hero'] },
+    { s: 'Climax mundu amma sentiment', r: ['Hero', 'Amma', 'Villain'] },
+    { s: 'Audio launch event', r: ['Anchor', 'Hero', 'Music director', 'Fans'] },
+    { s: 'First day first show ticket counter', r: ['Fans', 'Theatre manager', 'Black ticket seller'] },
+    { s: "Hero's mother finds out he's dating the villain's sister", r: ['Amma', 'Hero', "Villain's sister"] },
+    { s: 'Producer budget cut chesadu', r: ['Producer', 'Director', 'Hero'] },
+    { s: 'Faction village panchayat', r: ['Pedda Reddy', 'Villagers', 'Hero'] },
+    { s: 'Interval bang twist', r: ['Hero', 'Heroine', 'Comedian'] },
+    { s: 'Comedian police station lo', r: ['SI', 'Constable', 'Comedian'] },
+    { s: 'Heroine nanna hero ni reject chesadu', r: ['Heroine nanna', 'Hero', 'Heroine'] },
+    { s: 'Item song rehearsal', r: ['Choreographer', 'Dancers', 'Director'] },
+    { s: 'YouTube movie review live', r: ['Reviewer', 'Angry fans', 'Director'] },
+    { s: 'Dubbing studio lo dialogue retake', r: ['Hero', 'Dubbing director', 'Sound engineer'] },
+    { s: 'Award function speech', r: ['Host', 'Winners', 'Losers'] },
+    { s: 'Remake rights negotiation', r: ['Two producers', 'Lawyer'] },
+    { s: 'Fan association meeting', r: ['President', 'Fans'] },
+    { s: 'Flashback lo hero village ki vachadu', r: ['Villagers', 'Hero', 'Old friend'] },
+    { s: 'Twins confusion', r: ['Twin 1', 'Twin 2', 'Heroine'] },
+    { s: 'Villain henchmen salary hike adigaru', r: ['Villain', 'Henchmen'] },
+    { s: 'Rain song shooting lo water ayipoyindi', r: ['Director', 'Assistant', 'Heroine'] },
+    { s: 'Theatre lo climax time phone ring', r: ['Audience', 'Usher'] },
+    { s: 'Mass dialogue rehearsal', r: ['Dialogue writer', 'Hero', 'Director'] },
+    { s: 'Sequel announcement press meet', r: ['Journalists', 'Director', 'Producer'] },
+    { s: 'Don retirement party', r: ['Don', 'Henchmen', 'Police informer'] }
+  ];
+
+  // ── theme: follows the phone unless the player chose one in Profile ──
+  const sysDark = matchMedia('(prefers-color-scheme: dark)');
+  function theme() {
+    let pref = 'system'; try { pref = localStorage.getItem('cf_theme') || 'system'; } catch (e) {}
+    const t = pref === 'system' ? (sysDark.matches ? 'dark' : 'light') : pref;
+    document.documentElement.dataset.theme = t;
+    document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#f4f4f8' : '#0a0a0f';
+  }
+  theme(); sysDark.addEventListener('change', theme);
+
+  // ── no scene repeats until every one has come up (remembered on this phone) ──
+  let used = []; try { used = JSON.parse(localStorage.getItem('cf_questions_used') || '[]'); } catch (e) {}
+  let played = 0;
+  function nextScene() {
+    if (used.length >= SCENES.length) used = [];
+    const left = SCENES.map((_, i) => i).filter(i => !used.includes(i));
+    const i = left[Math.floor(Math.random() * left.length)];
+    used.push(i); try { localStorage.setItem('cf_questions_used', JSON.stringify(used)); } catch (e) {}
+    played++;
+    const sc = SCENES[i];
+    $('scene').textContent = sc.s.toUpperCase();
+    $('roles').innerHTML = sc.r.map(r => `<span>${r.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))}</span>`).join('') + '<span class="more">+ your own</span>';
+    $('count').textContent = 'SCENE ' + played;
+    const st = $('stage'); st.classList.remove('in'); void st.offsetWidth; st.classList.add('in');
+    fit();
+  }
+  // the scene as big as fits: no word broken, nothing scrolls
+  function fit() {
+    const el = $('scene'), stage = $('stage');
+    let fs = Math.min(innerWidth * .13, innerHeight * .09, 76); el.style.fontSize = fs + 'px';
+    while ((stage.scrollHeight > stage.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1) && fs > 20) { fs -= 2; el.style.fontSize = fs + 'px'; }
+  }
+  addEventListener('resize', () => { if ($('s-play').classList.contains('on')) fit(); });
+
+  // ── keep the screen awake while playing ──
+  let wake = null;
+  async function grab() { try { if (navigator.wakeLock && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } } catch (e) {} }
+  function drop() { try { wake && wake.release(); } catch (e) {} wake = null; }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && $('s-play').classList.contains('on')) grab(); });
+
+  function show(id) { document.querySelectorAll('#game .gs').forEach(s => s.classList.toggle('on', s.id === id)); }
+
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+const HOWTO = {
+    steps: [
+      { d: 3600, t: 'Put the phone in the middle and tap START. A scene appears with a few example roles.' },
+      { d: 3200, t: 'The roles are only examples. Everyone picks a character, and you can make up new ones so nobody is left out.' },
+      { d: 5200, t: 'Act out the scene, taking turns around the circle. Every line has to be a question.' },
+      { d: 3800, t: 'Make a statement, pause too long, repeat a question or ask one that makes no sense, and you are out.' },
+      { d: 4400, t: 'Tap NEW SCENE and keep going with the players left. The last one standing wins.' }
+    ],
+    build(svg, K) {
+      const { el, op, pr, ease, back, lerp, Phone, Player, Chip, Label, WidePill, Ripple, COLORS } = K;
+      const QC = '#6c5ce7';
+      const P = [[160, 40], [268, 120], [160, 204], [52, 120]], C = [160, 122];
+      const CH = [[160, 12], [268, 156], [160, 238], [52, 156]];
+      const pl = el('g', {}, svg), players = P.map((p, i) => Player(pl, p[0], p[1], 'RSBA'[i], COLORS[i]));
+      const roleT = P.map(p => el('text', { class: 'm', 'text-anchor': 'middle', x: p[0], y: p[1] + 28, 'font-size': 9, fill: 'var(--muted)', opacity: 0 }, svg, ''));
+      const ph = Phone(svg); ph.screen('#13131a');
+      const head = Label(svg, 'm'), sc1 = Label(svg), sc2 = Label(svg), ex = Label(svg, 'm'), r1 = Label(svg, 'm'), r2 = Label(svg, 'm'), r3 = Label(svg, 'm');
+      const start = WidePill(svg, 'START', QC, 44), next = WidePill(svg, 'NEW SCENE', QC, 58);
+      const tap = Ripple(svg), chips = P.map(() => Chip(svg)), note = Chip(svg);
+      const pop = (u, a) => back(pr(u, a, 260));
+      const roles = ['Auto driver', 'Passenger', 'Traffic police', 'Chaiwala'];
+      // the scene, drawn on the big phone
+      const scene = (x, y, s, o, a, b, rs) => {
+        const k = s / 2.85;
+        head.set('THE SCENE', x, y - 50 * k, 5 * k, '#9a9ab8', { o });
+        sc1.set(a, x, y - 30 * k, 13 * k, '#fff', { o, maxW: 62 * k }); sc2.set(b, x, y - 16 * k, 13 * k, '#fff', { o, maxW: 62 * k });
+        ex.set('EXAMPLE ROLES', x, y + 4 * k, 4.6 * k, QC, { o });
+        [r1, r2, r3].forEach((r, i) => r.set(rs[i] || '', x, y + (16 + 10 * i) * k, 6.5 * k, '#e8e8f0', { o }));
+      };
+      const hideScene = () => [head, sc1, sc2, ex, r1, r2, r3].forEach(l => l.hide());
+      return (s, u) => {
+        hideScene(); start.hide(); next.hide(); tap.set(0, 0, 0); chips.forEach(c => c.hide()); note.hide();
+        players.forEach(p => p.set()); roleT.forEach(t => op(t, 0)); ph.screen('#13131a');
+        if (s === 0) {
+          players.forEach(p => p.set({ o: .18 }));
+          const sc = 2.85 * (.85 + .15 * back(pr(u, 0, 450)));
+          ph.at(160, 112, sc);
+          start.set(160, 112, 1 - pr(u, 900, 200), pr(u, 520, 140) - pr(u, 660, 140));
+          tap.set(160, 112, pr(u, 560, 600), 30);
+          if (u > 1050) scene(160, 112, 2.85, pr(u, 1050, 300), 'AUTO METER', 'MEEDA GODAVA', ['Auto driver', 'Passenger', 'Traffic police']);
+        } else if (s === 1) {
+          const k = ease(pr(u, 0, 650));
+          ph.at(160, lerp(112, 122, k), lerp(2.85, 1.3, k));
+          if (k < .6) scene(160, lerp(112, 122, k), lerp(2.85, 1.3, k), 1 - k / .6, 'AUTO METER', 'MEEDA GODAVA', ['Auto driver', 'Passenger', 'Traffic police']);
+          players.forEach((p, i) => { const a = 500 + i * 450; p.set({ o: lerp(.18, 1, pr(u, a - 300, 300)) }); if (u > a) { roleT[i].textContent = roles[i]; op(roleT[i], pr(u, a, 250)); } });
+          if (u > 2250) { note.set('New role: Chaiwala', 70, 172, pop(u, 2250), 'ok'); players[3].set({ ring: 1, ringC: 'var(--green)' }); }
+        } else {
+          ph.at(160, 122, 1.3);
+          roleT.forEach((t, i) => { t.textContent = roles[i]; op(t, 1); });
+        }
+        if (s === 2) {
+          const lines = ['Meter enduku veyyaledu?', 'Neeku rate teleeda?', 'License ekkada?', 'Chai kavala evarikaina?'];
+          const i = Math.min(3, Math.floor(u / 1250)), r = u - i * 1250;
+          players[i].set({ ring: 1, ringC: QC });
+          chips[i].set(lines[i], CH[i][0], CH[i][1], pop(r, 0));
+        } else if (s === 3) {
+          players[3].set({ ring: 1, ringC: u > 1300 ? 'var(--accent)' : QC, out: pr(u, 1600, 300) });
+          if (u < 1300) chips[3].set('Nenu ikkade digipota.', CH[3][0], CH[3][1], pop(u, 200));
+          else chips[3].set("That's a statement. Out!", CH[3][0] + 30, CH[3][1], pop(u, 1300), 'acc');
+        } else if (s === 4) {
+          players[3].set({ out: 1 });
+          if (u < 2200) {
+            const k = ease(pr(u, 0, 400));
+            ph.at(160, 122, 1.3 + .5 * k);
+            next.set(160, 122 + 26 * k, pr(u, 300, 200) * (1 - pr(u, 1300, 200)), pr(u, 800, 120) - pr(u, 920, 120));
+            tap.set(160, 148, pr(u, 850, 600), 28);
+          } else {
+            ph.at(160, 122, 1.3);
+            players[1].set({ out: pr(u, 2300, 250) }); players[2].set({ out: pr(u, 2800, 250) });
+            if (u > 3300) { players[0].set({ ring: 1, ringC: 'var(--green)' }); chips[0].set('R wins!', CH[0][0], CH[0][1], pop(u, 3300), 'ok'); }
+          }
+        }
+      };
+    }
+  };
+
+  const HT = CinefiedHowTo.create($('howto'), HOWTO);
+  const openSheet = () => { $('rulesSheet').classList.add('open'); $('scrim').classList.add('open'); HT.play(); };
+  const closeSheet = () => { HT.stop(); $('rulesSheet').classList.remove('open'); $('scrim').classList.remove('open'); };
+  // every time the game is opened, the how-to-play plays first
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => { if ($('s-home').classList.contains('on')) openSheet(); }, 450));
+
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#startBtn') || t.closest('#againBtn')) { played = 0; show('s-play'); grab(); return nextScene(); }
+    if (t.closest('#nextBtn')) return nextScene();
+    if (t.closest('#stopBtn')) { drop(); return show('s-end'); }
+    if (t.closest('#quitBtn')) return show('s-home');
+    if (t.closest('#homeBtn')) return void history.back();
+    if (t.closest('[data-rules]')) return openSheet();
+    if (t.closest('#scrim') || t.closest('[data-close]')) return closeSheet();
+  });
+})();
+</script>
+</body>
+</html>

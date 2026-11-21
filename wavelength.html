@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Wavelength · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  :root{--c:var(--blue);--lo:var(--blue);--hi:var(--accent);--b4:var(--green);--b3:var(--yellow);--b2:var(--accent2);--bt:#10101a}
+  [hidden]{display:none!important}
+
+  #game{display:none}
+  #game.on{display:block}
+  #game .gs{display:none;height:100vh;height:var(--app-h,100dvh);overflow:hidden;flex-direction:column;max-width:460px;margin:0 auto;
+      padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px))}
+  #game .gs.on{display:flex}
+  #game .gs.in{animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  .l-mid{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1;min-width:0;padding:0 6px}
+  .l-mid b{font-family:var(--display);font-weight:400;font-size:19px;letter-spacing:2.5px;white-space:nowrap}
+  .l-mid small{font-size:10px;color:var(--muted);white-space:nowrap}
+  .clock{width:40px;height:40px;flex:none;position:relative;display:grid;place-items:center;font-size:11px;font-variant-numeric:tabular-nums}
+  .clock svg{position:absolute;inset:0;transform:rotate(-90deg)}
+  .clock circle{fill:none;stroke-width:3}
+  .clock .bg{stroke:var(--border)} .clock .fg{stroke:var(--c);stroke-linecap:round;stroke-dasharray:113;transition:stroke-dashoffset 1s linear}
+  .clock.low .fg{stroke:var(--accent)} .clock.low{color:var(--accent)}
+
+  .role{text-align:center;margin:clamp(6px,2dvh,18px) 0 clamp(4px,1dvh,10px)}
+  .role small{font-size:10.5px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+  .role h2{font-family:var(--display);font-weight:400;font-size:clamp(28px,5dvh,38px);letter-spacing:2px;line-height:1;margin-top:4px}
+  .role h2 b{font-weight:400;color:var(--c)}
+
+  /* the dial */
+  .dialbox{flex:none;position:relative;margin:clamp(6px,1.6dvh,14px) 0 4px}
+  .dial{width:100%;display:block;overflow:visible;touch-action:none}
+  .dial .face{fill:var(--surface);stroke:var(--border);stroke-width:1.5}
+  .dial .tick{stroke:var(--border);stroke-width:1.2}
+  .dial .b2{fill:var(--b2)}
+  .dial .b3{fill:var(--b3)}
+  .dial .b4{fill:var(--b4)}
+  .dial .rim{fill:none;stroke-width:5;stroke-linecap:round}
+  .dial .glow{fill:none;stroke-width:22;opacity:.13}
+  .dial .bt{font-family:var(--display);font-size:11px;fill:var(--bt);text-anchor:middle;letter-spacing:.5px}
+  .dial .bt.dim{fill:var(--bt);opacity:.85}
+  .dial .cover{fill:var(--surface2)}
+  .dial .needle{stroke:var(--text);stroke-width:3.5;stroke-linecap:round}
+  .dial .hub{fill:var(--text)}
+  .dial .pin text{font-family:var(--mono);font-size:8.5px;fill:#fff;text-anchor:middle;dominant-baseline:central;font-weight:500}
+  .dial .target{transform-origin:150px 150px}
+  .dial .lid{transform-origin:150px 150px;transition:transform .7s cubic-bezier(.6,0,.2,1),opacity .4s}
+  .dial .lidface{fill:var(--surface2);stroke:none}
+  .dial .lidtext{font-family:var(--display);font-size:19px;letter-spacing:5px;fill:var(--muted);opacity:.7;text-anchor:middle}
+  .shuffle{text-align:center;font-size:11.5px;color:var(--c);margin-top:6px;letter-spacing:1px}
+  .dial .pin{transition:opacity .3s,transform .4s cubic-bezier(.3,1.5,.5,1);transform-origin:150px 150px}
+  .dial.drag{cursor:grab}
+  .dial.hide-pins .pin{opacity:0;transform:scale(.6)}
+  .ends{display:flex;justify-content:space-between;gap:12px;margin-top:6px}
+  .ends span{font-family:var(--display);font-size:clamp(18px,3dvh,22px);letter-spacing:1.5px;line-height:1;max-width:48%}
+  .ends span:first-child{color:var(--lo)}
+  .ends span:last-child{text-align:right;color:var(--hi)}
+  .ends i{font-style:normal;color:var(--muted);font-family:var(--mono);font-size:12px;margin:0 2px}
+
+  /* clue */
+  .clue{flex:none;text-align:center;margin:clamp(8px,2.2dvh,22px) 0 0}
+  .clue small{font-size:10.5px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+  .clue h1{font-family:var(--display);font-weight:400;font-size:clamp(34px,6.4dvh,52px);letter-spacing:1.5px;line-height:1;margin-top:6px;color:var(--text);overflow-wrap:anywhere}
+  .clue h1::before{content:"\201C";color:var(--c)} .clue h1::after{content:"\201D";color:var(--c)}
+  .inrow{display:flex;gap:8px;margin-top:clamp(10px,2.4dvh,22px)}
+  .inrow input{flex:1;min-width:0;border:1.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:14px;padding:14px;font-family:var(--mono);font-size:14px;outline:none}
+  .inrow input:focus{border-color:var(--c)}
+  .tip{font-size:11.5px;color:var(--muted);text-align:center;line-height:1.5;margin-top:10px}
+  .gap{flex:1;min-height:8px}
+  .go{background:var(--c);box-shadow:0 10px 26px color-mix(in srgb,var(--c) 35%,transparent)}
+  .send{width:auto;padding:0 18px;font-size:19px}
+
+  .who{display:flex;justify-content:center;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .who .pfp{width:26px;height:26px;font-size:11px;opacity:.35;position:relative}
+  .who .pfp.ok{opacity:1}
+  .who .pfp.ok::after{content:"";position:absolute;right:-2px;bottom:-2px;width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 2px var(--bg)}
+  .count{text-align:center;font-size:11.5px;color:var(--muted);margin-top:8px}
+  .count b{color:var(--text)}
+
+  .thinking{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}
+  .thinking .pfp{width:58px;height:58px;font-size:24px}
+  .thinking p{font-size:12px;color:var(--muted)}
+  .thinking h3{font-family:var(--display);font-weight:400;font-size:26px;letter-spacing:2px}
+  .dots3 i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--c);margin:0 3px;animation:bob 1.2s infinite}
+  .dots3 i:nth-child(2){animation-delay:.15s} .dots3 i:nth-child(3){animation-delay:.3s}
+  @keyframes bob{0%,60%,100%{transform:none;opacity:.4}30%{transform:translateY(-6px);opacity:1}}
+
+  /* reveal */
+  .pts{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;margin-top:clamp(8px,1.8dvh,16px)}
+  .pts.many .prow{padding:5px 10px} .pts.many .prow .pfp{width:24px;height:24px;font-size:11px}
+  .prow{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:8px 12px;font-size:12.5px;box-shadow:var(--lift)}
+  .prow .pfp{width:28px;height:28px;font-size:12px;flex:none}
+  .who .pfp,.thinking .pfp,.champ .pfp{flex:none}
+  .prow span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .prow small{color:var(--muted);font-size:10px;letter-spacing:1px;margin-left:6px}
+  .prow b{font-family:var(--display);font-weight:400;font-size:22px;letter-spacing:1px;min-width:34px;text-align:right}
+  .prow b.p4{color:var(--c)} .prow b.p0{color:var(--muted)}
+  .prow em{font-style:normal;font-size:10.5px;color:var(--muted);min-width:44px;text-align:right}
+  .prow.psy{border-style:dashed}
+  .bottom{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  .gwait{text-align:center;font-size:12px;color:var(--muted);padding:14px 0}
+
+  /* final */
+  .champ{text-align:center;margin:clamp(6px,2.4dvh,30px) 0 clamp(8px,2dvh,22px)}
+  @media (max-height:700px){.champ small{margin-top:8px}.champ h1{font-size:40px}}
+  .champ .pfp{width:clamp(64px,10dvh,84px);height:clamp(64px,10dvh,84px);font-size:clamp(28px,4.4dvh,36px);margin:0 auto;box-shadow:0 0 0 4px var(--bg),0 0 0 6px var(--c)}
+  .champ small{display:block;font-size:10.5px;letter-spacing:2.5px;color:var(--muted);margin-top:14px}
+  .champ h1{font-family:var(--display);font-weight:400;font-size:clamp(44px,8dvh,64px);letter-spacing:2px;line-height:1;margin-top:2px}
+  .champ p{font-size:12px;color:var(--c)}
+  .stand{flex:1;min-height:0;display:flex;flex-direction:column;gap:clamp(4px,.8dvh,6px)}
+  .stand .prow,.pts .prow{flex:0 1 46px;min-height:30px;padding-top:0;padding-bottom:0}
+  .stand .prow i{font-style:normal;font-family:var(--display);font-size:18px;color:var(--muted);width:18px}
+
+  .skipnote{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12.5px;color:var(--muted);line-height:1.6;padding:0 10px}
+  .prow .tot{font-size:10.5px;color:var(--muted);min-width:24px;text-align:right}
+  #leaveSheet p{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px}
+  .inrow .btn[disabled]{opacity:.4}
+  /* keyboard open on the clue screen: make room so the box and SEND stay in view */
+  #g-clue.kb .role,#g-clue.kb .tip,#g-clue.kb .gap,#g-clue.kb .shuffle{display:none}
+  #g-clue.kb .dialbox,#g-clue.kb .ends{width:min(100%,calc((var(--app-h,100dvh) - 175px) * 1.7));margin-left:auto;margin-right:auto}
+  #g-clue.kb .dialbox{margin-top:auto}
+  #g-clue.kb .ends span{font-size:17px}
+  #g-clue.kb .inrow{margin-top:auto;padding-top:10px}
+</style>
+</head>
+<body>
+<div class="app" id="game">
+  <!-- 1. PSYCHIC GIVES A CLUE -->
+  <section class="gs" id="g-clue">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="l-mid"><b class="rno"></b><small>You're the psychic</small></div>
+      <div class="clock"></div>
+    </div>
+    <div class="role"><small>Only you can see the target</small><h2>GIVE A <b>CLUE</b></h2></div>
+    <div class="dialbox" id="dClue"></div>
+    <div class="ends"></div>
+    <p class="shuffle" hidden>Rolling the board…</p>
+    <form class="inrow" id="clueForm" autocomplete="off"><input id="clueIn" maxlength="40" placeholder="A movie, a hero, a word…" enterkeyhint="send"><button class="btn go send" type="submit">SEND</button></form>
+    <p class="tip">Your clue should sit where the target is on this scale. Don't use the words on the scale.</p>
+    <div class="gap"></div>
+  </section>
+
+  <!-- 2. GUESSER WAITS FOR THE CLUE -->
+  <section class="gs" id="g-wait">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="l-mid"><b class="rno"></b><small>You're guessing</small></div>
+      <div class="clock"></div>
+    </div>
+    <div class="dialbox" id="dWait" style="margin-top:clamp(16px,4dvh,40px)"></div>
+    <div class="ends"></div>
+    <p class="shuffle" hidden>Rolling the board…</p>
+    <div class="thinking"><span id="thinkAv"></span><h3 id="thinkName"></h3><div class="dots3"><i></i><i></i><i></i></div><p>The clue appears here in a moment</p></div>
+  </section>
+
+  <!-- 3. GUESSER MOVES THE DIAL -->
+  <section class="gs" id="g-guess">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="l-mid"><b class="rno"></b><small id="guessSub">Drag the dial</small></div>
+      <div class="clock"></div>
+    </div>
+    <div class="clue"><small class="clueBy"></small><h1 class="clueText"></h1></div>
+    <div class="dialbox" id="dGuess"></div>
+    <div class="ends"></div>
+    <div class="gap"></div>
+    <div class="who"></div>
+    <p class="count"></p>
+    <div class="bottom"><button class="btn go" type="button" id="lockBtn">LOCK IN</button></div>
+  </section>
+
+  <!-- 4. PSYCHIC WATCHES -->
+  <section class="gs" id="g-watch">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="l-mid"><b class="rno"></b><small>You're the psychic</small></div>
+      <div class="clock"></div>
+    </div>
+    <div class="clue"><small>Your clue</small><h1 class="clueText"></h1></div>
+    <div class="dialbox" id="dWatch"></div>
+    <div class="ends"></div>
+    <div class="gap"></div>
+    <div class="who"></div>
+    <p class="count"></p>
+    <div class="gap"></div>
+  </section>
+
+  <!-- 5. REVEAL -->
+  <section class="gs" id="g-reveal">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="l-mid"><b class="rno"></b><small id="revSub"></small></div>
+      <span style="width:40px"></span>
+    </div>
+    <div class="dialbox" id="dReveal" style="margin-top:clamp(10px,2.4dvh,22px)"></div>
+    <div class="ends"></div>
+    <div class="pts" id="pts"></div>
+    <div class="bottom" id="revBottom"></div>
+  </section>
+
+  <!-- 6. FINAL -->
+  <section class="gs" id="g-final">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="l-mid"><b>GAME OVER</b><small id="finSub"></small></div>
+      <span style="width:40px"></span>
+    </div>
+    <div class="champ" id="champ"></div>
+    <div class="stand" id="stand"></div>
+    <div class="bottom" id="finBottom"></div>
+  </section>
+</div>
+
+<div class="scrim" id="gScrim"></div>
+<section class="sheet" id="leaveSheet" aria-label="Leave"><div class="grab"></div><h3>LEAVE THE GAME?</h3>
+  <p>The others keep playing. You can join again between rounds with the room code.</p>
+  <div class="two"><button class="btn outline" type="button" data-stay>STAY</button><button class="btn" type="button" id="leaveYes">LEAVE</button></div></section>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
+<script src="core/core.js?v=0.2.1"></script>
+<script src="core/howto.js?v=0.2.0"></script>
+<script src="core/core-ui.js?v=0.2.3"></script>
+<script>
+(() => {
+  'use strict';
+  const C = Cinefied, UI = CinefiedUI, esc = C.esc;
+  const $ = id => document.getElementById(id);
+  const game = $('game');
+  const ANIM_MS = 3400, CLUE_MS = 60000, GUESS_MS = 30000, GRACE_MS = 2500;   // same as functions/wavelength.js
+
+  let V = null, shown = null, skew = 0, code = null, needle = 50, needleDeal = null, dragging = false;
+  const busy = new Set(), rolled = new Set(), opened = new Set(), asked = new Set();
+  const now = () => Date.now() + skew;
+
+  // ── keep the screen above the phone keyboard ──
+  function fitViewport() {
+    const h = window.visualViewport ? window.visualViewport.height : innerHeight;
+    document.documentElement.style.setProperty('--app-h', Math.round(h) + 'px');
+    if (window.visualViewport) scrollTo(0, 0);
+  }
+  if (window.visualViewport) visualViewport.addEventListener('resize', fitViewport);
+  addEventListener('resize', fitViewport);
+
+  // ── helpers over the room ──
+  const st = () => (V && V.room.state) || {};
+  const ph = () => (V ? V.room.phase : null);
+  const P = u => V.room.players[u];
+  const nameOf = u => (P(u) && P(u).name) || (st().names || {})[u] || 'Player';
+  const isMe = u => V && u === V.me;
+  const iPsychic = () => V && st().psychic === V.me;
+  const colorOf = u => (isMe(u) ? 'linear-gradient(135deg,var(--accent),var(--accent2))' : UI.avColor(u));
+  const pinColor = u => (isMe(u) ? 'var(--accent2)' : UI.avColor(u));   // your own needle: the orange of your avatar
+  const av = (u, cls) => `<span class="pfp${cls ? ' ' + cls : ''}" style="--pc:${colorOf(u)}">${UI.initial(nameOf(u))}</span>`;
+  const myTarget = () => { const p = V.private && V.private[st().deal]; return p && typeof p.target === 'number' ? p.target : null; };
+  const guessers = () => V.players.filter(p => p.uid !== st().psychic && (p.online !== false || (st().locked || {})[p.uid])).map(p => p.uid);
+  function setHTML(el, html) { if (el.dataset.h !== html) { el.dataset.h = html; el.innerHTML = html; } }
+
+  function show(id) {
+    if (shown === id) return;
+    shown = id;
+    document.querySelectorAll('#game .gs').forEach(s => { s.className = 'gs' + (s.id === id ? ' on in' : ''); });
+  }
+  async function ask(action, extra) {
+    if (busy.has(action)) return {};
+    busy.add(action);
+    const r = await C.referee(action, extra);
+    busy.delete(action);
+    if (!r.ok && r.error === 'scale_word') UI.say("Don't use the words on the scale");
+    else if (!r.ok && !['phase', 'noop', 'abort', 'late', 'bad_clue'].includes(r.error)) UI.say(C.message({ code: r.error }));
+    return r;
+  }
+
+  // ══ the dial ═════════════════════════════════════════════════
+  const R = 140, CX = 150, CY = 150;
+  const ang = v => Math.PI * (1 - v / 100);
+  const pt = (v, r) => [CX + r * Math.cos(ang(v)), CY - r * Math.sin(ang(v))];
+  function wedge(a, b, r0, r1) {
+    a = Math.max(0, a); b = Math.min(100, b);
+    const [x1, y1] = pt(a, r1), [x2, y2] = pt(b, r1), [x3, y3] = pt(b, r0), [x4, y4] = pt(a, r0);
+    return `M${x1},${y1} A${r1},${r1} 0 0 1 ${x2},${y2} L${x3},${y3} A${r0},${r0} 0 0 0 ${x4},${y4} Z`;
+  }
+  const BANDS = [[-18, -10, 2], [-10, -4, 3], [-4, 4, 4], [4, 10, 3], [10, 18, 2]];    // 4 within 4, 3 within 10, 2 within 18
+  function targetSVG(t) {
+    return `<g class="target">${BANDS.map(([a, b, p]) => `<path class="b${p}" d="${wedge(t + a, t + b, 26, R - 4)}"/>`).join('')}
+      ${BANDS.map(([a, b, p]) => { const [x, y] = pt(t + (a + b) / 2, R - 20); return `<text class="bt${p === 2 ? ' dim' : ''}" x="${x}" y="${y + 4}">${p}</text>`; }).join('')}</g>`;
+  }
+  let cid = 0;
+  // target: number or null; lid: 'open' | 'shut'; needle: number or null; pins: [{v, c, n}]
+  function dialSVG({ target, lid, needle: nv, pins }) {
+    const id = 'wf' + (++cid);
+    const arc = r => { const [x1, y1] = pt(0, r), [x2, y2] = pt(100, r); return `M${x1},${y1} A${r},${r} 0 0 1 ${x2},${y2}`; };
+    let s = `<svg class="dial" viewBox="0 -6 300 164"><defs><clipPath id="${id}"><path d="${wedge(0, 100, 0, R)}"/></clipPath>
+      <linearGradient id="g${id}" x1="0" x2="1"><stop offset="0" style="stop-color:var(--lo)"/><stop offset="1" style="stop-color:var(--hi)"/></linearGradient></defs>
+      <path class="face" d="${wedge(0, 100, 0, R)}"/><path class="glow" d="${arc(R - 12)}" stroke="url(#g${id})"/>`;
+    for (let v = 0; v <= 100; v += 10) { const [x1, y1] = pt(v, R), [x2, y2] = pt(v, R - (v % 50 ? 6 : 10)); s += `<line class="tick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`; }
+    // the guessers' phones never get the target before the reveal; for the roll they spin a decoy under the closed lid
+    s += `<g clip-path="url(#${id})">${targetSVG(target == null ? 50 : target)}</g>`;
+    let lt = ''; for (let v = 0; v <= 100; v += 5) { const [x1, y1] = pt(v, R - 2), [x2, y2] = pt(v, R - (v % 25 ? 8 : 14)); lt += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--border)" stroke-width="${v % 25 ? 1.2 : 2.4}"/>`; }
+    s += `<g class="lid" style="transform:scaleY(${lid === 'open' ? 0 : 1})"><path d="${wedge(0, 100, 0, R + 1)}" class="lidface"/>${lt}
+        <path d="${wedge(0, 100, 54, 56)}" fill="var(--border)"/><path d="${wedge(0, 100, 94, 96)}" fill="var(--border)"/><text x="150" y="92" class="lidtext">WAVELENGTH</text></g>`;
+    s += `<path class="rim" d="${arc(R)}" stroke="url(#g${id})"/>`;
+    if (nv != null) { const [x, y] = pt(nv, R - 8); s += `<line class="needle" x1="${CX}" y1="${CY}" x2="${x}" y2="${y}"/>`; }
+    (pins || []).forEach(p => {
+      const [x, y] = pt(p.v, R + 13), [x1, y1] = pt(p.v, R + 3);
+      s += `<g class="pin"><line x1="${CX}" y1="${CY}" x2="${x1}" y2="${y1}" stroke="var(--bg)" stroke-width="7" stroke-linecap="round"/><line x1="${CX}" y1="${CY}" x2="${x1}" y2="${y1}" stroke="${p.c}" stroke-width="4.2" stroke-linecap="round"/>
+        <circle cx="${x}" cy="${y}" r="9.5" fill="${p.c}" stroke="var(--bg)" stroke-width="2"/><text x="${x}" y="${y}">${p.n}</text></g>`;
+    });
+    return s + `<circle class="hub" cx="${CX}" cy="${CY}" r="7"/></svg>`;
+  }
+  // draw a dial once per key, so animations aren't cut short by every update
+  function putDial(box, key, opts) { if (box.dataset.k === key) return false; box.dataset.k = key; box.innerHTML = dialSVG(opts); return true; }
+  function setNeedle(box, v) { const n = box.querySelector('.needle'); if (!n) return; const [x, y] = pt(v, R - 8); n.setAttribute('x2', x); n.setAttribute('y2', y); }
+
+  // ── sounds ──
+  let ac = null;
+  function tick(f) { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = f; o.type = 'triangle'; g.gain.setValueAtTime(.05, ac.currentTime); g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + .05); o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + .06); } catch (e) {} }
+
+  // ── the roll: the lid closes, the board is rolled underneath, the lid opens (psychic only) ──
+  function setLid(box, open, ms) { const c = box.querySelector('.lid'); if (!c) return; c.style.transitionDuration = ms === 0 ? '0s' : ''; c.style.transform = open ? 'scaleY(0)' : 'scaleY(1)'; }
+  function rollBoard(box, psychic, elapsed) {
+    const c = box.querySelector('.lid'), bands = box.querySelector('.target'), note = box.parentElement.querySelector('.shuffle'), k = box.dataset.k;
+    const at = (ms, fn) => setTimeout(() => { if (box.dataset.k === k) fn(); }, Math.max(0, ms - elapsed));
+    if (note) note.hidden = false;
+    setLid(box, true, 0); c.style.opacity = 1; c.getBoundingClientRect();
+    at(60, () => { setLid(box, false); tick(420); });
+    at(800, () => {
+      if (bands && bands.animate) bands.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(-95deg)' }, { transform: 'rotate(80deg)' }, { transform: 'rotate(-48deg)' }, { transform: 'rotate(26deg)' }, { transform: 'rotate(-9deg)' }, { transform: 'rotate(0deg)' }], { duration: 1800, easing: 'ease-in-out' });
+      [0, 300, 650, 950, 1250, 1500].forEach((d, i) => at(800 + d, () => tick(600 + i * 60)));
+      if (psychic) c.style.opacity = .3;
+      else if (c.animate) c.animate([{ transform: 'scaleY(1) rotate(0deg)' }, { transform: 'scaleY(1) rotate(-1.6deg)' }, { transform: 'scaleY(1) rotate(1.6deg)' }, { transform: 'scaleY(1) rotate(0deg)' }], { duration: 260, iterations: 6 });
+    });
+    at(2700, () => { c.style.opacity = 1; if (psychic) { setLid(box, true); tick(880); } });
+    at(ANIM_MS, () => { if (note) note.hidden = true; render(); });
+  }
+  function openLid(box) {
+    const svg = box.querySelector('svg'); svg.classList.add('hide-pins');
+    setLid(box, false, 0); box.querySelector('.lid').getBoundingClientRect();
+    setTimeout(() => { setLid(box, true); tick(700); }, 400);
+    setTimeout(() => { svg.classList.remove('hide-pins'); tick(900); }, 1250);
+  }
+  const rolling = () => now() < (st().t0 || 0) + ANIM_MS;
+
+  // ══ timers ═══════════════════════════════════════════════════
+  // The server decides; phones just say "my timer ran out" (it checks its own clock).
+  function tickTimers() {
+    if (!V || !V.room.state) return;
+    const s = st(), p = ph();
+    if ((p !== 'clue' && p !== 'guess') || !s.deadline) return;
+    const left = Math.max(0, s.deadline - now()), total = p === 'clue' ? CLUE_MS : GUESS_MS;
+    const shownLeft = Math.min(left, total), secs = Math.ceil(shownLeft / 1000);
+    document.querySelectorAll('#game .gs.on .clock').forEach(c => {
+      if (!c.firstChild) c.innerHTML = '<svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="18"/><circle class="fg" cx="20" cy="20" r="18"/></svg><span></span>';
+      c.querySelector('.fg').style.strokeDashoffset = 113 * (1 - shownLeft / total);
+      c.querySelector('span').textContent = secs;
+      c.classList.toggle('low', secs <= 10);
+    });
+    const tag = k => `${s.deal}:${p}:${k}`;
+    const once = (k, fn) => { if (asked.has(tag(k))) return; asked.add(tag(k)); fn(); };
+    // time's up while guessing: the dial locks where it is
+    if (p === 'guess' && left <= 0 && !iPsychic() && !(s.locked || {})[V.me]) once('auto', () => ask('lock', { v: needle }));
+    const late = now() - (s.deadline + (p === 'guess' ? GRACE_MS : 0));
+    if (late >= 0) once('t1', () => ask('tick'));
+    if (late > 1500) once('t2', () => ask('tick'));
+    if (late > 4000) once('t3', () => ask('tick'));
+  }
+  setInterval(tickTimers, 250);
+
+  // ══ screens ══════════════════════════════════════════════════
+  function common() {
+    const s = st();
+    document.querySelectorAll('#game .rno').forEach(e => { e.textContent = `ROUND ${s.round || 1} OF ${s.total || 6}`; });
+    const sc = s.scale || { l: '', r: '' };
+    const ends = `<span>${esc(sc.l.toUpperCase())}</span><span>${esc(sc.r.toUpperCase())}</span>`;
+    document.querySelectorAll('#game .ends').forEach(e => setHTML(e, ends));
+    document.querySelectorAll('#game .clueText').forEach(e => { e.textContent = s.clue || ''; });
+    document.querySelectorAll('#game .clueBy').forEach(e => { e.textContent = `${nameOf(s.psychic)}'s clue`; });
+  }
+  function whoLocked() {
+    const s = st(), gs = guessers(), L = s.locked || {}, n = gs.filter(u => L[u]).length;
+    const html = gs.slice(0, 8).map(u => av(u, L[u] ? 'ok' : '')).join('');
+    document.querySelectorAll('#game .gs.on .who').forEach(e => setHTML(e, html));
+    document.querySelectorAll('#game .gs.on .count').forEach(e => { e.innerHTML = `<b>${n}</b> of ${gs.length} locked in${iPsychic() ? ' · their dials stay hidden until the reveal' : ''}`; });
+  }
+
+  function drawClue() {
+    const s = st(), box = $('dClue'), t = myTarget();
+    if (t == null) { putDial(box, s.deal + ':wait', { target: null, lid: 'shut' }); return; }   // the card is on its way
+    const fresh = now() - s.t0 < ANIM_MS;
+    if (putDial(box, s.deal + ':' + t, { target: t, lid: fresh && !rolled.has(s.deal) ? 'shut' : 'open' }) && fresh && !rolled.has(s.deal)) {
+      rolled.add(s.deal); rollBoard(box, true, Math.max(0, now() - s.t0));
+    }
+    const r = rolling();
+    $('clueForm').querySelector('button').disabled = r || busy.has('clue');
+    $('clueIn').disabled = r;
+    if (!r) box.parentElement.querySelector('.shuffle').hidden = true;
+  }
+  function drawWait() {
+    const s = st(), box = $('dWait');
+    const fresh = now() - s.t0 < ANIM_MS;
+    if (putDial(box, s.deal, { target: null, lid: 'shut' }) && fresh && !rolled.has(s.deal)) { rolled.add(s.deal); rollBoard(box, false, Math.max(0, now() - s.t0)); }
+    setHTML($('thinkAv'), av(s.psychic, ''));
+    $('thinkAv').firstChild.style.cssText += ';width:58px;height:58px;font-size:24px';
+    $('thinkName').textContent = `${nameOf(s.psychic).toUpperCase()} IS THINKING`;
+  }
+  function drawGuess() {
+    const s = st(), box = $('dGuess'), locked = !!(s.locked || {})[V.me];
+    if (needleDeal !== s.deal) { needleDeal = s.deal; needle = 50; }
+    putDial(box, s.deal, { target: null, lid: 'shut', needle });
+    if (!dragging) setNeedle(box, needle);
+    box.querySelector('svg').classList.toggle('drag', !locked);
+    const b = $('lockBtn');
+    b.textContent = locked ? 'LOCKED · TAP TO CHANGE' : 'LOCK IN';
+    b.classList.toggle('outline', locked); b.classList.toggle('go', !locked);
+    $('guessSub').textContent = locked ? 'Locked in' : 'Drag the dial';
+    whoLocked();
+  }
+  function drawWatch() {
+    const s = st(), t = myTarget();
+    putDial($('dWatch'), s.deal + ':' + t, { target: t, lid: t == null ? 'shut' : 'open' });
+    whoLocked();
+  }
+  function drawReveal() {
+    const s = st(), res = s.result || {}, box = $('dReveal');
+    const pins = Object.keys(res.guesses || {}).map(u => ({ v: res.guesses[u], c: pinColor(u), n: UI.initial(nameOf(u)) }));
+    const first = !opened.has(s.deal);
+    if (putDial(box, s.deal + ':rev', { target: res.target, lid: first ? 'shut' : 'open', pins }) && first) { opened.add(s.deal); openLid(box); }
+    $('revSub').textContent = res.skipped ? '' : `${nameOf(s.psychic)}'s clue: ${s.clue || ''}`;
+    const sc = s.scores || {};
+    let html;
+    if (res.skipped) {
+      html = `<p class="skipnote">${esc(isMe(s.psychic) ? 'You' : nameOf(s.psychic))} ${res.skipped === 'left' ? 'left the game' : 'ran out of time'}, so nobody scores this round.<br>That's where the target was.</p>`;
+    } else {
+      const label = u => { const v = (res.guesses || {})[u]; if (v === undefined) return 'NO GUESS'; const d = Math.abs(v - res.target); return d <= 4 ? 'BULLSEYE' : d <= 10 ? 'CLOSE' : d <= 18 ? 'NEAR' : 'MISS'; };
+      const gs = Object.keys(res.pts || {}).filter(u => u !== s.psychic).sort((a, b) => res.pts[b] - res.pts[a]);
+      html = gs.map(u => `<div class="prow">${av(u)}<span>${isMe(u) ? 'You' : esc(nameOf(u))}</span><em>${label(u)}</em><b class="p${res.pts[u]}">+${res.pts[u]}</b><span class="tot">${sc[u] || 0}</span></div>`).join('') +
+        `<div class="prow psy">${av(s.psychic)}<span>${isMe(s.psychic) ? 'You' : esc(nameOf(s.psychic))}<small>PSYCHIC</small></span><b>+${(res.pts || {})[s.psychic] || 0}</b><span class="tot">${sc[s.psychic] || 0}</span></div>`;
+    }
+    $('pts').className = 'pts' + (Object.keys(res.pts || {}).length > 6 ? ' many' : '');
+    setHTML($('pts'), html);
+    const L = P(V.room.leader), last = (s.round || 0) >= (s.total || 0);
+    setHTML($('revBottom'), V.isLeader
+      ? `<button class="btn go" type="button" data-do="next">${last ? 'FINAL RESULTS' : 'NEXT ROUND'}</button>`
+      : `<p class="gwait">Waiting for ${esc(L ? L.name : 'the leader')} to ${last ? 'show the results' : 'start the next round'}</p>`);
+  }
+  function drawFinal() {
+    const s = st(), sc = s.scores || {};
+    const ids = [...new Set([...Object.keys(sc), ...V.players.map(p => p.uid)])].sort((a, b) => (sc[b] || 0) - (sc[a] || 0));
+    const top = ids.length ? (sc[ids[0]] || 0) : 0, winners = ids.filter(u => (sc[u] || 0) === top);
+    $('finSub').textContent = s.short === 'few' ? 'Not enough players to keep going' : s.short === 'ended' ? 'The leader ended the game' : `${s.total} rounds`;
+    setHTML($('champ'), `<div style="display:flex;justify-content:center;gap:10px">${winners.slice(0, 3).map(u => av(u)).join('')}</div>
+      <small>ON THE SAME WAVELENGTH</small><h1>${winners.length > 1 ? "IT'S A TIE" : esc((isMe(winners[0]) ? 'You' : nameOf(winners[0] || '')).toUpperCase())}</h1><p>${top} points</p>`);
+    setHTML($('stand'), ids.map((u, k) => `<div class="prow"><i>${k + 1}</i>${av(u)}<span>${isMe(u) ? 'You' : esc(nameOf(u))}</span><b class="${(sc[u] || 0) === top ? 'p4' : ''}">${sc[u] || 0}</b></div>`).join(''));
+    const L = P(V.room.leader);
+    setHTML($('finBottom'), V.isLeader
+      ? '<button class="btn go" type="button" data-do="again">PLAY AGAIN</button><button class="btn outline" type="button" data-do="lobby">WAITING ROOM</button>'
+      : `<p class="gwait">Waiting for ${esc(L ? L.name : 'the leader')} to choose</p><button class="btn outline" type="button" data-leave>LEAVE</button>`);
+  }
+
+  function render() {
+    if (!V || !V.room.state) return;
+    const p = ph();
+    common();
+    if (p === 'clue') { if (iPsychic()) { drawClue(); show('g-clue'); } else { drawWait(); show('g-wait'); } }
+    else if (p === 'guess') { if (iPsychic()) { drawWatch(); show('g-watch'); } else { drawGuess(); show('g-guess'); } whoLocked(); }
+    else if (p === 'reveal') { drawReveal(); show('g-reveal'); }
+    else if (p === 'final') { drawFinal(); show('g-final'); }
+    tickTimers();
+  }
+
+  // ══ touches ══════════════════════════════════════════════════
+  const closeLeave = () => { $('leaveSheet').classList.remove('open'); $('gScrim').classList.remove('open'); };
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#gScrim') || t.closest('[data-stay]')) return closeLeave();
+    if (t.closest('#leaveYes')) { closeLeave(); return void UI.leaveGame(); }
+    if (!t.closest('#game') || !V) return;
+    if (t.closest('[data-leave]')) { $('leaveSheet').classList.add('open'); $('gScrim').classList.add('open'); return; }
+    if (t.closest('#lockBtn') && ph() === 'guess') {
+      const locked = (st().locked || {})[V.me];
+      return void ask(locked ? 'unlock' : 'lock', locked ? undefined : { v: Math.round(needle * 10) / 10 });
+    }
+    const d = t.closest('[data-do]'); if (d) return void ask(d.dataset.do);
+  });
+  // keyboard open on the clue screen: the dial shrinks and the clue box sits right above the keyboard
+  let fullH = window.visualViewport ? visualViewport.height : innerHeight;
+  function kbCheck() {
+    const h = window.visualViewport ? visualViewport.height : innerHeight;
+    if (document.activeElement !== $('clueIn')) fullH = Math.max(fullH, h);
+    $('g-clue').classList.toggle('kb', document.activeElement === $('clueIn') && h < fullH * 0.82);
+  }
+  if (window.visualViewport) visualViewport.addEventListener('resize', kbCheck);
+  addEventListener('resize', kbCheck);
+  $('clueIn').addEventListener('focus', () => { kbCheck(); setTimeout(kbCheck, 350); });
+  $('clueIn').addEventListener('blur', () => setTimeout(kbCheck, 50));
+  // pressing SEND must not close the keyboard first (the layout would jump and the tap would miss)
+  $('clueForm').querySelector('button').addEventListener('pointerdown', e => { if (document.activeElement === $('clueIn')) e.preventDefault(); });
+  $('clueForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const text = $('clueIn').value.trim();
+    if (!text || !V || ph() !== 'clue' || rolling()) return;
+    const r = await ask('clue', { text });
+    if (r.ok) { $('clueIn').value = ''; $('clueIn').blur(); }
+  });
+  // dragging the needle
+  const gbox = $('dGuess');
+  function drag(e) {
+    const svg = gbox.querySelector('svg'); if (!svg) return;
+    const r = svg.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * 300, y = (e.clientY - r.top) / r.height * 164 - 6;
+    let a = Math.atan2(CY - y, x - CX); if (a < 0) a = x < CX ? Math.PI : 0;
+    needle = Math.max(0, Math.min(100, (1 - a / Math.PI) * 100)); setNeedle(gbox, needle);
+  }
+  const canDrag = () => V && ph() === 'guess' && !iPsychic() && !(st().locked || {})[V.me];
+  gbox.addEventListener('pointerdown', e => { if (!canDrag()) return; dragging = true; gbox.setPointerCapture(e.pointerId); drag(e); });
+  gbox.addEventListener('pointermove', e => { if (dragging && canDrag()) drag(e); });
+  const stop = () => { dragging = false; };
+  gbox.addEventListener('pointerup', stop); gbox.addEventListener('pointercancel', stop);
+
+  // ══ hand-off with the core ═══════════════════════════════════
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = {
+    steps: [
+      { d: 3800, t: 'Each round one player is the psychic. Only they see where the target is on a scale like Flop ↔ Blockbuster.' },
+      { d: 3600, t: 'The psychic has 60 seconds to type a clue that sits at that spot. No words from the scale.' },
+      { d: 4600, t: "Everyone else drags their own dial to where they think the target is and locks in. Nobody sees the others' dials until the reveal." },
+      { d: 3600, t: 'The target is revealed. The closer your dial, the more you score: bullseye 4, close 3, near 2.' }
+    ],
+    build(svg, K) {
+      const { el, op, cl, pr, ease, back, lerp, fitLines, Phone, Player, Chip, Label, WidePill, Ripple, COLORS } = K;
+      const cx = 160, cy = 168, R0 = 34, R1 = 104, T = .68;
+      const pt = (t, r) => { const a = Math.PI * (1 - t); return [cx + r * Math.cos(a), cy - r * Math.sin(a)]; };
+      const wedge = (t0, t1) => { const [a, b] = [pt(t0, R1), pt(t1, R1)], [c, d] = [pt(t1, R0), pt(t0, R0)];
+        return `M${a[0].toFixed(1)} ${a[1].toFixed(1)}A${R1} ${R1} 0 0 1 ${b[0].toFixed(1)} ${b[1].toFixed(1)}L${c[0].toFixed(1)} ${c[1].toFixed(1)}A${R0} ${R0} 0 0 0 ${d[0].toFixed(1)} ${d[1].toFixed(1)}Z`; };
+      el('path', { d: `M${cx - R1} ${cy}A${R1} ${R1} 0 0 1 ${cx + R1} ${cy}Z`, fill: 'var(--surface)', stroke: 'var(--border)', 'stroke-width': 1.5 }, svg);
+      const clip = el('clipPath', { id: 'wlclip' }, svg); el('path', { d: `M${cx - R1} ${cy}A${R1} ${R1} 0 0 1 ${cx + R1} ${cy}Z` }, clip);
+      const tg = el('g', { 'clip-path': 'url(#wlclip)' }, svg), band = el('g', {}, tg);
+      // bands drawn around t = 0; the group is rotated to put them on the target
+      [[.17, .45, '2'], [.10, .7, '3'], [.04, 1, '4']].forEach(([w, o, n]) => {
+        el('path', { d: wedge(.5 - w, .5 + w), fill: 'var(--blue)', opacity: o }, band);
+      });
+      [['2', -.135], ['3', -.07], ['4', 0], ['3', .07], ['2', .135]].forEach(([n, dt]) => { const [x, y] = pt(.5 + dt, R1 - 12); el('text', { class: 'd', 'text-anchor': 'middle', x: x.toFixed(1), y: (y + 4).toFixed(1), 'font-size': 11, fill: '#10101a' }, band, n); });
+      el('text', { class: 'm', 'text-anchor': 'start', x: cx - R1, y: cy + 15, 'font-size': 9, fill: 'var(--muted)', 'letter-spacing': 1 }, svg, 'FLOP');
+      el('text', { class: 'm', 'text-anchor': 'end', x: cx + R1, y: cy + 15, 'font-size': 9, fill: 'var(--muted)', 'letter-spacing': 1 }, svg, 'BLOCKBUSTER');
+      const guesses = [[.70, 2, '+4'], [.53, 1, '+2']];   // needle colours that stand out on the target
+      const needles = guesses.map(([, i]) => el('line', { x1: cx, y1: cy, stroke: COLORS[i], 'stroke-width': 4, 'stroke-linecap': 'round', opacity: 0 }, svg));
+      el('circle', { cx, cy, r: 6, fill: 'var(--text)' }, svg);
+      const pl = el('g', {}, svg), psy = Player(pl, 160, 214, 'R', COLORS[0]);
+      const G = [[32, 70, 'S', 2], [288, 70, 'B', 1]].map(([x, y, l, i]) => Player(pl, x, y, l, COLORS[i]));
+      const GC = [[32, 38], [288, 38]];
+      const only = Chip(svg), clue = Chip(svg), timer = Label(svg, 'm'), gc = G.map(() => Chip(svg)), pc = Chip(svg);
+      const pop = (u, a) => back(pr(u, a, 260));
+      const setBand = (t, o) => { band.setAttribute('transform', `rotate(${((t - .5) * 180).toFixed(2)} ${cx} ${cy})`); op(band, o); };
+      const needle = (n, t, o) => { const [x, y] = pt(t, R1 - 6); n.setAttribute('x2', x.toFixed(1)); n.setAttribute('y2', y.toFixed(1)); op(n, o); };
+      // the target slides in from the left, overshoots a little and settles
+      const slide = k => k <= 0 ? 0 : T * back(k);
+      return (s, u) => {
+        [only, clue, pc, ...gc].forEach(c => c.hide()); timer.hide(); setBand(T, 0); needles.forEach(n => op(n, 0));
+        psy.set({ ring: s < 2 ? 1 : 0 }); G.forEach(g => g.set({ o: s === 0 ? .25 : 1 }));
+        if (s === 0) {
+          setBand(Math.max(.04, slide(pr(u, 300, 1100))), pr(u, 300, 200));
+          if (u > 1500) only.set('Only R sees this', 160, 242, pop(u, 1500));
+        } else if (s === 1) {
+          setBand(T, 1 - .75 * pr(u, 0, 300));
+          const word = 'Pokiri', n = Math.min(word.length, Math.floor((u - 400) / 180));
+          clue.set((n > 0 ? word.slice(0, n) : '') + (n < word.length && Math.floor(u / 300) % 2 ? '|' : ' '), 160, 242, pop(u, 300));
+          timer.set('0:' + String(Math.max(0, 58 - Math.floor(u / 1000))).padStart(2, '0'), 160, 196, 9, 'var(--muted)');
+        } else if (s === 2) {
+          clue.set('Pokiri', 160, 242, 1);
+          guesses.forEach(([t], j) => {
+            const a = 300 + j * 1500, k = pr(u, a, 1100), wob = Math.sin(u / 120 + j) * .06 * (1 - k);
+            if (u < a) return;
+            needle(needles[j], lerp(.2 + j * .1, t, ease(k)) + wob, 1);
+            G[j].set({ ring: 1, ringC: k >= 1 ? 'var(--green)' : 'var(--text)' });
+          });
+        } else {
+          clue.set('Pokiri', 160, 242, 1);
+          guesses.forEach(([t], j) => needle(needles[j], t, 1));
+          setBand(Math.max(.04, slide(pr(u, 200, 1100))), pr(u, 200, 200));
+          guesses.forEach(([, , p], j) => { if (u > 1500 + j * 300) gc[j].set(p, GC[j][0], GC[j][1], pop(u, 1500 + j * 300), 'ok'); });
+        
+        }
+      };
+    }
+  };
+
+  UI.mount({
+    game: {
+      howto: HOWTO,
+      id: 'wavelength', name: 'Wavelength', shelf: 'Play together', color: 'var(--blue)', glyph: 'W', referee: true,
+      pitch: 'One player sees a hidden spot on a movie scale and gives a clue. Everyone else reads their mind.',
+      facts: ['2 to 8 players', 'Each on own phone', '~10 min'],
+      rules: ['Each round one player is the psychic. Only they see where the target is on a scale like Flop ↔ Blockbuster.',
+              'The psychic has 60 seconds to type a clue (a movie, a hero, a word) that sits at that spot. No words from the scale.',
+              'Everyone else drags their own dial to where they think the target is and locks in. 30 seconds. Nobody sees the others\' dials until the reveal.',
+              'Bullseye 4, close 3, near 2. The psychic gets the average of the guessers minus one. The psychic changes every round.'],
+      min: 2, max: 8,
+      settings: [{ key: 'rounds', label: 'Rounds', options: [4, 6, 8], default: 6, summary: v => `${v} rounds` }],
+    },
+    gameNames: { pictionary: 'Pictionary', imposter: 'Imposter', tictactoe: 'Tic Tac Toe', tierd: "Tier'd", likely: "Who's More Likely", wavelength: 'Wavelength' },
+    onStart: v => { V = v; code = v.code; shown = null; game.classList.add('on'); fitViewport(); render(); },
+    onUpdate: v => { V = v; code = v.code; render(); },
+    onLobby: () => { V = null; shown = null; closeLeave(); game.classList.remove('on'); },
+  });
+  firebase.database().ref('.info/serverTimeOffset').on('value', s => { skew = Number(s.val()) || 0; });
+})();
+</script>
+</body>
+</html>

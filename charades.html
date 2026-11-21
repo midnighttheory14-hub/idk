@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Charades · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  /* Charades: one phone, act out the movie. No rooms, no database. */
+  :root{--c:var(--accent)}
+  [hidden]{display:none!important}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{user-select:none;-webkit-user-select:none;touch-action:manipulation}
+  .gs{display:none;position:fixed;inset:0;flex-direction:column;
+      padding:calc(10px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
+  .gs.on{display:flex;animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  #s-home .wrap{flex:1;min-height:0;display:flex;flex-direction:column;max-width:460px;width:100%;margin:0 auto}
+  #startBtn{background:var(--c);box-shadow:0 10px 26px color-mix(in srgb,var(--c) 35%,transparent)}
+
+  /* the red play screen: nothing but the movie */
+  #s-play{background:var(--accent);color:#fff;align-items:center;justify-content:center}
+  #s-play::before{content:"";position:absolute;inset:0;background:radial-gradient(70% 60% at 50% 45%,rgba(255,255,255,.12),transparent 70%);pointer-events:none}
+  .stop{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:calc(14px + env(safe-area-inset-right,0px));width:42px;height:42px;border-radius:50%;
+        border:1.5px solid rgba(255,255,255,.5);background:rgba(255,255,255,.14);display:grid;place-items:center;cursor:pointer;z-index:2}
+  .stop svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round}
+  .count{position:absolute;top:calc(20px + env(safe-area-inset-top,0px));left:calc(18px + env(safe-area-inset-left,0px));font-size:11px;letter-spacing:2px;color:rgba(255,255,255,.75)}
+  .lbl{font-size:11px;letter-spacing:3px;color:rgba(255,255,255,.75);margin-bottom:10px;position:relative}
+  #movie{width:100%;max-width:1000px;text-align:center;font-family:var(--display);font-weight:400;letter-spacing:2px;line-height:.98;position:relative;
+         overflow-wrap:normal;word-break:normal;text-wrap:balance;text-shadow:0 4px 24px rgba(0,0,0,.18)}
+  #movie.pop{animation:pop .4s cubic-bezier(.2,.9,.3,1.25)}
+  @keyframes pop{from{opacity:0;transform:scale(.86)}}
+  .next{position:absolute;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(300px,72%);border:0;border-radius:16px;padding:14px;
+        background:#fff;color:#14141c;font-family:var(--display);font-size:24px;letter-spacing:3px;cursor:pointer;box-shadow:0 10px 26px rgba(0,0,0,.18)}
+  .next:active{transform:translateX(-50%) scale(.96)}
+  @media (orientation:landscape) and (max-height:500px){.next{width:min(240px,40%);padding:10px;font-size:20px}.lbl{margin-bottom:4px}}
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- 1. ENTRY -->
+  <section class="gs on" id="s-home">
+    <div class="bar">
+      <button class="icon-btn" type="button" id="homeBtn" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="chipbtn" type="button" data-rules>How to play</button>
+    </div>
+    <div class="wrap">
+      <div class="hero">
+        <div class="glyph" aria-hidden="true">C</div>
+        <div class="kind"><i></i>Pass one phone</div>
+        <h1>CHARADES</h1>
+        <p>A movie appears. Act it out without saying a word, and let your friends guess.</p>
+        <div class="facts"><span class="fact">1 phone</span><span class="fact">Any number</span><span class="fact">No timer</span></div>
+      </div>
+      <button class="btn" type="button" id="startBtn">START</button>
+    </div>
+  </section>
+
+  <!-- 2. THE MOVIE -->
+  <section class="gs" id="s-play">
+    <span class="count" id="count"></span>
+    <button class="stop" type="button" id="stopBtn" aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="lbl">ACT IT OUT</div>
+    <div id="movie"></div>
+    <button class="next" type="button" id="nextBtn">NEXT MOVIE</button>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet ht-sheet" id="rulesSheet" aria-label="How to play"><div class="grab"></div><div id="howto"></div></section>
+
+<script src="core/howto.js?v=0.2.0"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  // ═════════════ MOVIES (edit here) ═════════════
+  const MOVIES = ["RRR", "Baahubali: The Beginning", "Baahubali 2: The Conclusion", "Pushpa: The Rise", "Magadheera", "Arjun Reddy", "Ala Vaikunthapurramuloo", "Rangasthalam", "Eega", "Arundhati", "Pokiri", "Athadu", "Srimanthudu", "Gabbar Singh", "Attarintiki Daredi", "Jersey", "Salaar: Part 1 – Ceasefire", "Kalki 2898 AD", "Dasara", "Geetha Govindam", "Temper", "Aravinda Sametha Veera Raghava", "Akhanda", "Hi Nanna", "Bharat Ane Nenu", "Major", "Hanu-Man", "Race Gurram", "Manam", "Ye Maaya Chesave", "Gangotri", "Arya", "Bunny", "Happy", "Desamuduru", "Parugu", "Arya 2", "Varudu", "Vedam", "Badrinath", "Julayi", "Yevadu", "S/O Satyamurthy", "Sarrainodu", "Kushi", "Jalsa", "Panjaa", "Katamarayudu", "Vakeel Saab", "Bheemla Nayak", "Chirutha", "Orange", "Racha", "Naayak", "Okkadu", "Khaleja", "Dookudu", "Businessman", "Maharshi", "Sarileru Neekevvaru", "Guntur Kaaram", "Simhadri", "Yamadonga", "Kantri", "Adhurs", "Baadshah", "Janatha Garage", "Jai Lava Kusa", "Devara: Part 1", "Varsham", "Chatrapathi", "Yogi", "Billa", "Darling", "Mr. Perfect", "Rebel", "Saaho", "Radhe Shyam", "Adipurush", "Happy Days", "Godavari", "Fidaa", "Love Story", "Majili", "Geethanjali", "Dhee", "Ready", "Kick", "Pelli Choopulu", "Brochevarevarura", "Mathu Vadalara", "Goodachari", "Kshanam", "Evaru", "Shyam Singha Roy", "Taxiwaala", "Dear Comrade", "Liger", "World Famous Lover", "Waltair Veerayya", "Veera Simha Reddy", "Bhagavanth Kesari", "Legend", "Simha", "Indra", "Tagore", "Stalin", "F2: Fun and Frustration", "Gudumba Shankar", "Ghajini", "Lakshmi", "Malliswari", "Manmadhudu", "Oopiri", "Premam", "Master", "Leo", "Jailer", "Robo", "Khaidi No. 150", "Sye Raa Narasimha Reddy", "Mirchi", "Pushpa 2: The Rule"];
+
+  // ── theme: follows the phone unless the player chose one in Profile ──
+  const sysDark = matchMedia('(prefers-color-scheme: dark)');
+  function theme() {
+    let pref = 'system'; try { pref = localStorage.getItem('cf_theme') || 'system'; } catch (e) {}
+    const t = pref === 'system' ? (sysDark.matches ? 'dark' : 'light') : pref;
+    document.documentElement.dataset.theme = t;
+    document.querySelector('meta[name=theme-color]').content = $('s-play').classList.contains('on') ? '#ff3f3f' : t === 'light' ? '#f4f4f8' : '#0a0a0f';
+  }
+  theme(); sysDark.addEventListener('change', theme);
+
+  // ── no repeats until every movie has come up (remembered on this phone) ──
+  let used = []; try { used = JSON.parse(localStorage.getItem('cf_charades_used') || '[]'); } catch (e) {}
+  let played = 0;
+  function nextMovie() {
+    if (used.length >= MOVIES.length) used = [];
+    const left = MOVIES.map((_, i) => i).filter(i => !used.includes(i));
+    const i = left[Math.floor(Math.random() * left.length)];
+    used.push(i); try { localStorage.setItem('cf_charades_used', JSON.stringify(used)); } catch (e) {}
+    played++;
+    const el = $('movie'); el.textContent = MOVIES[i];
+    el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+    $('count').textContent = 'MOVIE ' + played;
+    fit();
+  }
+  // as big as it fits, never breaking a word in the middle
+  function fit() {
+    const el = $('movie'), maxH = innerHeight - 190;
+    let fs = Math.min(innerWidth * .18, innerHeight * .3, 150); el.style.fontSize = fs + 'px';
+    while ((el.scrollWidth > el.clientWidth + 1 || el.offsetHeight > maxH) && fs > 24) { fs -= 3; el.style.fontSize = fs + 'px'; }
+  }
+  addEventListener('resize', () => { if ($('s-play').classList.contains('on')) fit(); });
+
+  // ── keep the screen awake while playing ──
+  let wake = null;
+  async function grab() { try { if (navigator.wakeLock && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } } catch (e) {} }
+  function drop() { try { wake && wake.release(); } catch (e) {} wake = null; }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && $('s-play').classList.contains('on')) grab(); });
+
+  function show(id) { document.querySelectorAll('#game .gs').forEach(s => s.classList.toggle('on', s.id === id)); theme(); }
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = {
+    steps: [
+      { d: 3600, t: 'Press START. A movie name appears. Only the actor looks at the phone.' },
+      { d: 4800, t: 'Act it out without saying a word. Everyone else guesses.' },
+      { d: 4800, t: 'Someone got it? Tap NEXT MOVIE and pass the phone to the next actor.' }
+    ],
+    build(svg, K) {
+      const { el, op, cl, pr, ease, back, lerp, Player, Phone, Chip, Label, WidePill, Ripple, COLORS } = K;
+      const AX = 160, AY = 172, F = [[44, 62], [276, 62], [44, 186]], FC = [[44, 28], [276, 28], [44, 220]];
+      const arms = el('g', { opacity: 0, stroke: 'var(--accent2)', 'stroke-width': 6, 'stroke-linecap': 'round', fill: 'none' }, svg);
+      const armL = el('path', {}, arms), armR = el('path', {}, arms);
+      const pl = el('g', {}, svg);
+      const actor = Player(pl, AX, AY, 'R', COLORS[0]), friends = F.map((p, i) => Player(pl, p[0], p[1], 'SBA'[i], COLORS[i + 1]));
+      const ph = Phone(svg);
+      const lbl = Label(svg, 'm'), name = Label(svg);
+      const start = WidePill(svg, 'START', 'var(--accent)', 44), nextP = WidePill(svg, 'NEXT MOVIE', '#fff', 58, 'var(--accent)');
+      const tap = Ripple(svg), chips = F.map(() => Chip(svg)), hush = Chip(svg);
+      const pop = (u, a) => back(pr(u, a, 260));
+      const P0 = [160, 92, 2.3];
+      return (s, u) => {
+        lbl.hide(); name.hide(); start.hide(); nextP.hide(); chips.forEach(c => c.hide()); hush.hide(); tap.set(0, 0, 0); op(arms, 0);
+        actor.set({ x: AX, y: AY, s: 1.8 }); friends.forEach(f => f.set());
+        ph.show(1); ph.screen('var(--accent)');
+        if (s === 0) {
+          friends.forEach(f => f.set({ o: .18 }));
+          ph.at(P0[0], P0[1], P0[2] * (.85 + .15 * back(pr(u, 0, 500))));
+          ph.screen(u < 900 ? '#13131a' : 'var(--accent)');
+          start.set(P0[0], P0[1], 1 - pr(u, 850, 150), pr(u, 520, 140) - pr(u, 660, 140));
+          tap.set(P0[0], P0[1], pr(u, 560, 600), 30);
+          if (u > 900) { lbl.set('ACT IT OUT', P0[0], 66, 5.4, 'rgba(255,255,255,.75)', { o: pr(u, 900, 250) }); name.set('BAAHUBALI', P0[0], 92, 16, '#fff', { s: pop(u, 1000), maxW: 60 }); }
+          if (u > 1900) hush.set('Only the actor looks', 160, 226, pop(u, 1900));
+        } else if (s === 1) {
+          const k = ease(pr(u, 0, 600));
+          ph.at(lerp(P0[0], 236, k), lerp(P0[1], 214, k), lerp(P0[2], .9, k), 90 * k); ph.screen(k > .5 ? '#13131a' : 'var(--accent)');
+          // the actor acts it out: arms gesturing, body swaying, no props
+          const sway = Math.sin(u / 380) * 6, bob = Math.abs(Math.sin(u / 300)) * 4;
+          const hx = AX + sway, hy = AY - bob;
+          actor.set({ x: hx, y: hy, s: 1.8 });
+          op(arms, pr(u, 300, 300));
+          const aL = Math.sin(u / 290), aR = Math.sin(u / 290 + 2.2);
+          armL.setAttribute('d', `M${hx - 22} ${hy + 4} Q${hx - 46} ${hy - 6 - 16 * aL} ${hx - 40 - 6 * aL} ${hy - 30 - 22 * aL}`);
+          armR.setAttribute('d', `M${hx + 22} ${hy + 4} Q${hx + 46} ${hy - 6 - 16 * aR} ${hx + 40 + 6 * aR} ${hy - 30 - 22 * aR}`);
+          hush.set('No words', 160, 236, pop(u, 500));
+          ['Magadheera?', 'Eega?', 'Baahubali!'].forEach((g, i) => {
+            const a = 900 + i * 1100; if (u < a) return;
+            chips[i].set(g, FC[i][0], FC[i][1], pop(u, a), i === 2 && u > a + 500 ? 'ok' : undefined);
+            friends[i].set({ ring: u < a + 1100 ? 1 : 0, ringC: i === 2 && u > a + 500 ? 'var(--green)' : 'var(--text)' });
+          });
+        } else {
+          const k = ease(pr(u, 0, 500)), kp = ease(pr(u, 2300, 900));
+          const x = lerp(lerp(236, P0[0], k), 86, kp), y = lerp(lerp(214, P0[1], k), 178, kp), sc = lerp(lerp(.9, P0[2], k), 1.1, kp);
+          ph.at(x, y, sc, 90 * (1 - k)); ph.screen(k > .5 ? 'var(--accent)' : '#13131a');
+          chips[2].set('Baahubali!', FC[2][0], FC[2][1], 1 - pr(u, 300, 300), 'ok');
+          if (u < 2300) {
+            const nm = u < 1150 ? 'BAAHUBALI' : 'EEGA';
+            lbl.set('ACT IT OUT', x, y - 26 * sc / 2.3, 5.4 * sc / 2.3, 'rgba(255,255,255,.75)', { o: k });
+            name.set(nm, x, y, 16 * sc / 2.3, '#fff', { o: k, s: u >= 1150 ? pop(u, 1150) : 1, maxW: 60 * sc / 2.3 });
+            nextP.set(x, y + 30, pr(u, 400, 250) * (1 - pr(u, 1100, 150)), pr(u, 800, 120) - pr(u, 920, 120));
+            tap.set(x, y + 30, pr(u, 850, 600), 30);
+          }
+          actor.set({ x: AX, y: AY, s: 1.8, ring: 1 - kp });
+          friends[2].set({ ring: kp, ringC: 'var(--accent)' });
+          if (u > 3300) hush.set('Your turn to act', 110, 236, pop(u, 3300));
+        }
+      };
+    }
+  };
+
+  const HT = CinefiedHowTo.create($('howto'), HOWTO);
+  const openSheet = () => { $('rulesSheet').classList.add('open'); $('scrim').classList.add('open'); HT.play(); };
+  const closeSheet = () => { HT.stop(); $('rulesSheet').classList.remove('open'); $('scrim').classList.remove('open'); };
+  // every time the game is opened, the how-to-play plays first
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => { if ($('s-home').classList.contains('on')) openSheet(); }, 450));
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#startBtn')) { played = 0; show('s-play'); grab(); return nextMovie(); }
+    if (t.closest('#nextBtn')) return nextMovie();
+    if (t.closest('#stopBtn')) { drop(); return show('s-home'); }
+    if (t.closest('#homeBtn')) return void history.back();
+    if (t.closest('[data-rules]')) return openSheet();
+    if (t.closest('#scrim') || t.closest('[data-close]')) return closeSheet();
+  });
+})();
+</script>
+</body>
+</html>

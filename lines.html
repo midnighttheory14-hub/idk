@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Lines · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  /* Lines: everyone acts out one scene, and each phone keeps handing its player a line to sneak in. */
+  :root{--lines:var(--blue);--c:var(--lines)}
+  #game{display:none}
+  #game.on{display:block}
+  [hidden]{display:none!important}
+  html,body{overscroll-behavior:none}
+  #game .gs{position:fixed;inset:0;display:none;flex-direction:column;
+      padding:calc(10px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
+  #game .gs.on{display:flex;animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  .col{flex:1;min-height:0;display:flex;flex-direction:column;max-width:520px;width:100%;margin:0 auto}
+  .go{background:var(--c);color:#fff;box-shadow:0 10px 26px color-mix(in srgb,var(--c) 32%,transparent)}
+  .btn.go{background:var(--c)}
+
+  /* top bar */
+  .top{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:42px}
+  .room{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:6px 12px 6px 6px;font-size:11px;color:var(--muted);cursor:pointer}
+  .room b{font-family:var(--display);font-weight:400;font-size:16px;letter-spacing:2.5px;color:var(--text)}
+  .room .who{display:flex}
+  .room .who .pfp{width:20px;height:20px;font-size:9px;margin-left:-6px;box-shadow:0 0 0 2px var(--surface)}
+  .room .who .pfp:first-child{margin-left:0}
+  .lbl{font-size:10px;letter-spacing:4px;color:var(--muted)}
+  .lbl i{display:inline-block;width:7px;height:7px;border-radius:2px;background:var(--c);margin-right:9px;vertical-align:1px}
+
+  /* 1. the scene + your line: lots of air, the line is the hero */
+  .scene{text-align:center;padding:clamp(18px,4dvh,40px) 8px 0}
+  #theme{font-family:var(--display);font-weight:400;font-size:clamp(28px,min(8.6vw,5.4dvh),46px);letter-spacing:1.5px;line-height:1;margin-top:12px;text-wrap:balance;overflow-wrap:normal;word-break:normal}
+  #roles{font-size:11.5px;color:var(--muted);line-height:1.6;margin:12px auto 0;max-width:34ch}
+  #roles b{color:var(--text);font-weight:400}
+  .rule{width:36px;height:2px;border-radius:2px;background:color-mix(in srgb,var(--c) 60%,transparent);margin:clamp(22px,5dvh,48px) auto 0}
+  .line{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:16px 4px}
+  .line .lbl{color:var(--c)}
+  #line{font-family:var(--display);font-weight:400;letter-spacing:1.2px;line-height:1.04;text-wrap:balance;overflow-wrap:normal;word-break:normal;max-width:100%}
+  #line.pop{animation:pop .4s cubic-bezier(.2,.9,.3,1.25)}
+  @keyframes pop{from{opacity:0;transform:scale(.92)}}
+  #line.wait{color:var(--muted)}
+  .acts{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .acts .btn{margin:0;width:100%}
+  .link{background:none;border:0;color:var(--muted);font-family:var(--mono);font-size:11.5px;letter-spacing:2px;padding:12px 18px;cursor:pointer}
+  @media (orientation:landscape) and (max-height:520px){
+    #g-play .col{max-width:860px;display:grid;grid-template-columns:1fr 1.2fr;grid-template-rows:auto 1fr auto;column-gap:28px}
+    #g-play .top{grid-column:1/-1} #g-play .scene{grid-column:1;grid-row:2/4;align-self:center;padding:0} #g-play .rule{display:none}
+    #g-play .line{grid-column:2;grid-row:2} #g-play .acts{grid-column:2;grid-row:3}
+  }
+
+  /* 2. between scenes */
+  #g-break .mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px}
+  #g-break h2{font-family:var(--display);font-weight:400;font-size:clamp(44px,12vmin,72px);letter-spacing:3px;line-height:.95}
+  #g-break h2 em{font-style:normal;color:var(--c)}
+  #g-break p{font-size:11.5px;color:var(--muted);line-height:1.6;max-width:30ch}
+  #g-break .acts{width:min(340px,100%);margin:0 auto}
+
+  /* 3. everyone's lines */
+  #g-recap .head2{text-align:center;padding:clamp(14px,3dvh,30px) 0 clamp(14px,3dvh,26px)}
+  #g-recap h2{font-family:var(--display);font-weight:400;font-size:clamp(40px,10vmin,60px);letter-spacing:3px;line-height:.95;margin-top:12px}
+  #g-recap h2 em{font-style:normal;color:var(--c)}
+  .list{flex:1;min-height:0;overflow-y:auto;padding:0 6px 16px;overscroll-behavior:contain}
+  .who-block{padding:18px 0;border-top:1px solid var(--border)}
+  .who-block:first-child{border-top:0;padding-top:4px}
+  .who-block h4{font-family:var(--display);font-weight:400;font-size:20px;letter-spacing:2px;color:var(--c)}
+  .who-block h4 small{font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--muted);margin-left:6px}
+  .who-block p{font-size:12.5px;line-height:1.55;margin-top:8px}
+  .empty{text-align:center;color:var(--muted);font-size:12px;padding:30px 0}
+  #g-recap .acts{width:min(340px,100%);margin:0 auto}
+  #recapWait{font-size:11px;color:var(--muted);text-align:center;margin:4px 0 6px}
+
+  .sheet h3+p{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px}
+  .sheet .stack{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+  .sheet .stack .btn{margin-top:0}
+  .sheet .pink{background:var(--c);color:#fff;box-shadow:none}
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- 1. THE SCENE + YOUR LINE -->
+  <section class="gs" id="g-play">
+    <div class="col">
+      <div class="top">
+        <button class="room" type="button" id="roomChip"><span class="who" id="who"></span><b id="code"></b></button>
+        <button class="icon-btn" type="button" data-exit aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="scene">
+        <div class="lbl" id="sceneN"></div>
+        <div id="theme"></div>
+        <p id="roles"></p>
+        <div class="rule"></div>
+      </div>
+      <div class="line" id="lineBox"><div class="lbl">YOUR LINE TO SNEAK IN</div><div id="line"></div></div>
+      <div class="acts">
+        <button class="btn go" type="button" id="nextBtn">NEXT SENTENCE</button>
+        <button class="link" type="button" id="endSceneBtn" hidden>END SCENE</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. BETWEEN SCENES -->
+  <section class="gs" id="g-break">
+    <div class="col">
+      <div class="top">
+        <button class="room" type="button" id="roomChip2"><span class="who" id="who2"></span><b id="code2"></b></button>
+        <button class="icon-btn" type="button" data-exit aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="mid">
+        <div class="lbl"><i></i>CUT!</div>
+        <h2 id="breakH"></h2>
+        <p id="breakP"></p>
+      </div>
+      <div class="acts" id="breakActs">
+        <button class="btn go" type="button" id="nextSceneBtn">NEXT SCENE</button>
+        <button class="link" type="button" id="endGameBtn">END GAME</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. EVERYONE'S LINES -->
+  <section class="gs" id="g-recap">
+    <div class="col">
+      <div class="head2">
+        <div class="lbl"><i></i>THAT'S A WRAP</div>
+        <h2>EVERYONE'S <em>LINES</em></h2>
+      </div>
+      <div class="list" id="recap"></div>
+      <div class="acts">
+        <button class="btn go" type="button" id="againBtn" hidden>BACK TO THE ROOM</button>
+        <p id="recapWait" hidden></p>
+        <button class="link" type="button" id="leaveBtn2">LEAVE</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet" id="exitSheet" aria-label="Stop playing"><div class="grab"></div><h3>STOP PLAYING?</h3>
+  <p id="exitNote"></p>
+  <div class="stack">
+    <button class="btn pink" type="button" data-close>KEEP PLAYING</button>
+    <button class="btn outline" type="button" id="finishBtn">END GAME FOR EVERYONE</button>
+    <button class="btn outline" type="button" id="leaveBtn">LEAVE THE ROOM</button>
+  </div>
+</section>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="data/lines.js?v=0.1.0"></script>
+<script src="core/core.js?v=0.2.1"></script>
+<script src="core/howto.js?v=0.3.0"></script>
+<script src="core/core-ui.js?v=0.2.3"></script>
+<script>
+(() => {
+  'use strict';
+  const C = Cinefied, UI = CinefiedUI, esc = C.esc;
+  const $ = id => document.getElementById(id);
+  const game = $('game');
+  const D = window.CinefiedLines;
+
+  // the sentence pool: r = random sentences, d = dialogues, t = movie titles. A sentence's key is its kind + its place in the list (r12, d3, t40).
+  const POOL = { r: D.random, d: D.dialogues, t: D.titles };
+  const WEIGHT = { r: D.MIX.random, d: D.MIX.dialogues, t: D.MIX.titles };
+  function lineOf(key) {
+    const k = key && key[0], i = key ? +key.slice(1) : -1, item = POOL[k] && POOL[k][i];
+    if (item === undefined) return null;
+    return { text: k === 'd' ? item.s : item };
+  }
+
+  let V = null, code = null, gameId = null, mine = null, busy = false, wake = null;
+  const st = () => (V && V.room.state) || {};
+  const ref = p => firebase.database().ref(`rooms/${code}/${p}`);
+
+  // ── themes: no repeats until all 50 have come up (remembered on the leader's phone) ──
+  function pickTheme() {
+    let used = []; try { used = JSON.parse(localStorage.getItem('cf_lines_themes') || '[]'); } catch (e) {}
+    if (used.length >= D.themes.length) used = [];
+    const left = D.themes.map((_, i) => i).filter(i => !used.includes(i) && i !== st().th);
+    const i = left.length ? left[Math.floor(Math.random() * left.length)] : Math.floor(Math.random() * D.themes.length);
+    used.push(i); try { localStorage.setItem('cf_lines_themes', JSON.stringify(used)); } catch (e) {}
+    return i;
+  }
+
+  // ── my current sentence, kept on this phone so a refresh doesn't hand out a new one ──
+  const memKey = () => `cf_ln_${code}_${gameId}`;
+  const remember = k => { try { sessionStorage.setItem(memKey(), k); } catch (e) {} };
+  const recall = () => { try { return sessionStorage.getItem(memKey()); } catch (e) { return null; } };
+
+  // ── claim a sentence nobody in the room has had yet ──
+  // Each claim is a transaction on rooms/CODE/state/used/cN/KEY (value = my uid, which is how the recap knows who got what),
+  // so two phones can never get the same one. When everything has been used, the pool starts again (cycle N+1).
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  function kindOrder(free) {                       // kinds in a random order, weighted by MIX
+    const left = Object.keys(POOL).filter(k => free[k].length), out = [];
+    while (left.length) {
+      let r = Math.random() * left.reduce((s, k) => s + WEIGHT[k], 0), j = 0;
+      while (j < left.length - 1 && (r -= WEIGHT[left[j]]) > 0) j++;
+      out.push(left.splice(j, 1)[0]);
+    }
+    return out;
+  }
+  async function claim() {
+    const me = V.me;
+    for (let round = 0; round < 4; round++) {
+      const cyc = st().cycle || 0, used = ((st().used || {})['c' + cyc]) || {};
+      const free = {}; let total = 0;
+      Object.keys(POOL).forEach(k => { free[k] = shuffle(POOL[k].map((_, i) => i).filter(i => !used[k + i])); total += free[k].length; });
+      let tried = 0;
+      for (const k of kindOrder(free)) {
+        for (const i of free[k].slice(0, 6)) {
+          tried++;
+          try {
+            const r = await ref(`state/used/c${cyc}/${k}${i}`).transaction(cur => (cur ? undefined : me));
+            if (r && r.committed) return k + i;
+          } catch (e) { if (!V || V.room.phase !== 'play') return null; }
+        }
+        break;                                   // that kind was crowded: look again with fresh data
+      }
+      if (total > tried) continue;
+      try { await ref('state/cycle').transaction(cur => ((cur || 0) === cyc ? cyc + 1 : undefined)); } catch (e) {}
+      await new Promise(r => setTimeout(r, 120));
+    }
+    return null;
+  }
+
+  // ── the sentence, as big as it fits in the card ──
+  function showLine(key, animate) {
+    const L = lineOf(key), el = $('line');
+    el.classList.toggle('wait', !L);
+    el.textContent = L ? L.text : 'Getting your line…';
+    if (animate) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+    fit();
+  }
+  function fit() {
+    const el = $('line'), box = $('lineBox');
+    if (!$('g-play').classList.contains('on')) return;
+    let fs = Math.min(innerWidth * .13, 64); el.style.fontSize = fs + 'px';
+    const room = () => box.clientHeight - box.firstElementChild.offsetHeight - 46;   // centred text overflows upwards, so measure it directly
+    while ((el.offsetHeight > room() || el.scrollWidth > el.clientWidth + 1) && fs > 16) { fs -= 2; el.style.fontSize = fs + 'px'; }
+  }
+  addEventListener('resize', fit);
+
+  async function newLine() {
+    if (busy || !V || V.room.phase !== 'play') return;
+    busy = true; $('nextBtn').classList.add('busy');
+    const g = gameId, k = await claim();
+    busy = false; $('nextBtn').classList.remove('busy');
+    if (g !== gameId || !V || V.room.phase !== 'play') return;
+    if (!k) return UI.say("Couldn't get a new line. Try again.");
+    mine = k; remember(k); showLine(k, true);
+  }
+
+  // ── screens ──
+  function show(id) { document.querySelectorAll('#game .gs').forEach(s => s.classList.toggle('on', s.id === id)); if (id === 'g-play') requestAnimationFrame(fit); }
+  async function getWake() { try { if (navigator.wakeLock && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } } catch (e) {} }
+  function dropWake() { try { wake && wake.release(); } catch (e) {} wake = null; }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && V && V.room.phase === 'play') getWake(); });
+
+  const leaderName = () => { const L = V.room.players[V.room.leader]; return L ? L.name : 'the leader'; };
+  function drawTop() {
+    const ps = V.players.filter(p => p.online !== false);
+    const faces = ps.slice(0, 4).map(p => `<span class="pfp" style="--pc:${p.uid === V.me ? 'linear-gradient(135deg,var(--accent),var(--accent2))' : UI.avColor(p.uid)}">${UI.initial(p.name)}</span>`).join('');
+    $('who').innerHTML = $('who2').innerHTML = faces;
+    $('code').textContent = $('code2').textContent = code || '';
+    $('finishBtn').hidden = !V.isLeader;
+    $('exitNote').textContent = V.isLeader
+      ? "END GAME shows everyone's lines, then you can all go back to the room."
+      : `Only ${leaderName()} can end the game for everyone. You can leave the room any time.`;
+  }
+  let shownTheme = null;
+  function drawScene() {
+    const s = st(), T = D.themes[s.th] || D.themes[0];
+    $('sceneN').innerHTML = '<i></i>SCENE ' + (s.scene || 1);
+    if (shownTheme !== s.th + ':' + s.scene) {
+      shownTheme = s.th + ':' + s.scene;
+      $('theme').textContent = T.s;
+      $('roles').innerHTML = 'Like ' + T.r.map(r => `<b>${esc(r)}</b>`).join(', ') + ', or make up your own role';
+    }
+    $('endSceneBtn').hidden = !V.isLeader;
+  }
+  function drawBreak() {
+    const n = st().scene || 1;
+    $('breakH').innerHTML = `SCENE ${n} <em>DONE</em>`;
+    $('breakActs').hidden = !V.isLeader;
+    $('breakP').innerHTML = V.isLeader
+      ? 'Ready for the next one?'
+      : `Waiting for ${esc(leaderName())} to start the next scene<span class="dots"></span>`;
+  }
+  function drawRecap() {
+    const used = st().used || {}, by = {};
+    Object.keys(used).forEach(c => Object.keys(used[c] || {}).forEach(k => {
+      const uid = used[c][k]; if (typeof uid !== 'string') return;
+      const L = lineOf(k); if (L) (by[uid] = by[uid] || []).push(L);
+    }));
+    const order = V.players.map(p => p.uid).filter(u => by[u]).concat(Object.keys(by).filter(u => !V.room.players[u]));
+    $('recap').innerHTML = order.length ? order.map(u => {
+      const p = V.room.players[u], name = p ? p.name : 'Left the game';
+      return `<div class="who-block"><h4>${esc(name.toUpperCase())}${u === V.me ? '<small>you</small>' : ''}</h4>${by[u].map(L => `<p>${esc(L.text)}</p>`).join('')}</div>`;
+    }).join('') : '<p class="empty">No lines this time.</p>';
+    $('againBtn').hidden = !V.isLeader;
+    $('recapWait').hidden = V.isLeader;
+    $('recapWait').innerHTML = `Waiting for ${esc(leaderName())} to go back to the room<span class="dots"></span>`;
+  }
+
+  function render() {
+    if (!V || !V.room.state) return;
+    drawTop();
+    const s = st(), phase = V.room.phase;
+    if (s.gid !== gameId) {                  // a new game: this phone gets its first line
+      gameId = s.gid; mine = recall(); busy = false; shownTheme = null;
+    }
+    if (phase === 'recap') { closeSheet(); dropWake(); show('g-recap'); return drawRecap(); }
+    if (s.live === false) { show('g-break'); return drawBreak(); }
+    const was = $('g-play').classList.contains('on');
+    drawScene(); show('g-play'); getWake();
+    if (mine) { if (!was) showLine(mine, false); }
+    else if (!busy) { showLine(null); newLine(); }
+  }
+
+  // ══ touches ══════════════════════════════════════════════════
+  const closeSheet = () => { $('exitSheet').classList.remove('open'); $('scrim').classList.remove('open'); };
+  const fail = err => UI.say(C.message(err));
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#scrim') || t.closest('#exitSheet [data-close]')) return closeSheet();
+    if (t.closest('#leaveBtn') || t.closest('#leaveBtn2')) { closeSheet(); return void UI.leaveGame(); }
+    if (!V) return;
+    const lead = V.isLeader;
+    if (t.closest('#finishBtn') && lead) { closeSheet(); return void C.setPhase('recap').catch(fail); }
+    if (!t.closest('#game')) return;
+    if (t.closest('[data-exit]')) { $('exitSheet').classList.add('open'); $('scrim').classList.add('open'); return; }
+    if (t.closest('#nextBtn')) return void newLine();
+    if (t.closest('#endSceneBtn') && lead) return void ref('state/live').set(false).catch(fail);
+    if (t.closest('#nextSceneBtn') && lead) return void ref('state').update({ live: true, scene: (st().scene || 1) + 1, th: pickTheme() }).catch(fail);
+    if (t.closest('#endGameBtn') && lead) return void C.setPhase('recap').catch(fail);
+    if (t.closest('#againBtn') && lead) return void firebase.database().ref('rooms/' + code).update({ phase: 'waiting', open: false, state: null }).catch(fail);
+    if (t.closest('#roomChip') || t.closest('#roomChip2')) { try { navigator.clipboard.writeText(code); UI.say('Room code copied'); } catch (err) {} }
+  });
+
+  // ══ how to play: the animated steps (drawn by core/howto.js) ══
+  const HOWTO = {
+    steps: [
+      { d: 2600, t: 'Everyone joins the room on their own phone.' },
+      { d: 3800, t: 'Every phone shows the same scene. Pick a role that fits, or make up your own.' },
+      { d: 8200, t: 'Your phone gives you a line. Keep talking in your role and slip the line in somewhere, then tap NEXT SENTENCE for a new one.' },
+      { d: 4200, t: 'No timer, no scores. The leader ends the scene. At the end, everyone sees all the lines.' }
+    ],
+    build(svg, K) {
+      const { el, op, pr, ease, back, lerp, Phone, Player, Chip, Label, WidePill, Ripple, COLORS } = K;
+      const LC = 'var(--blue)', X = [64, 128, 192, 256], AY = 196, ME = 1;
+      const pop = (u, a) => back(pr(u, a, 300));
+      const pl = el('g', {}, svg), players = X.map((x, i) => Player(pl, x, AY, 'RSBA'[i], COLORS[i]));
+      const roleT = X.map(x => el('text', { class: 'm', 'text-anchor': 'middle', x, y: AY + 30, 'font-size': 8.5, fill: 'var(--muted)', opacity: 0 }, svg, ''));
+      const phones = X.map(() => { const p = Phone(svg); p.screen('#13131a'); return p; });
+      const scene = Label(svg), sceneL = Label(svg, 'm');
+      const big = Phone(svg); big.screen('#13131a');
+      const secL = Label(svg, 'm'), l1 = Label(svg), l2 = Label(svg), recT = Label(svg);
+      const next = WidePill(svg, 'NEXT SENTENCE', LC, 92), tap = Ripple(svg);
+      const rows = [['R', 'Idi naa last warning.'], ['S', 'Vankaya ante naaku bhayam.'], ['B', 'Nee bank balance entha?'], ['A', 'Moon meeda chai stall pedatha.']].map((r, i) => {
+        const g = el('g', { opacity: 0 }, svg), y = 64 + i * 34;
+        el('circle', { cx: 74, cy: y, r: 10, fill: COLORS[i] }, g);
+        el('text', { class: 'd', 'text-anchor': 'middle', x: 74, y: y + 4.4, 'font-size': 13, fill: 'var(--bg)' }, g, r[0]);
+        el('text', { class: 'm', x: 94, y: y + 3.8, 'font-size': 10, fill: 'var(--text)' }, g, r[1]);
+        return g;
+      });
+      // S's speech bubble (three lines; * marks the given line)
+      const bub = (() => {
+        const g = el('g', { opacity: 0 }, svg);
+        el('rect', { x: 98, y: 46, width: 212, height: 74, rx: 14, fill: 'var(--surface)', stroke: 'var(--border)' }, g);
+        el('path', { d: 'M118 119 L127 152 L140 119 Z', fill: 'var(--surface)', stroke: 'var(--border)', 'stroke-linejoin': 'round' }, g);
+        el('rect', { x: 117, y: 117, width: 24, height: 4, fill: 'var(--surface)' }, g);
+        const text = [['Sir,', 'raid', 'sare...', 'kaani', 'kitchen'], ['lo', 'vethakakandi.', '*Vankaya', '*ante'], ['*naaku', '*bhayam!', 'Akkada', 'emi', 'ledu.']];
+        const words = []; let n = 0;
+        text.forEach((line, li) => {
+          const t = el('text', { class: 'm', x: 112, y: 70 + li * 17, 'font-size': 10 }, g);
+          line.forEach((w, wi) => {
+            const hi = w[0] === '*', sp = el('tspan', { fill: hi ? LC : 'var(--text)', 'font-weight': hi ? 500 : 400 }, t, (hi ? w.slice(1) : w) + (wi < line.length - 1 ? ' ' : ''));
+            words.push({ e: sp, n: n++ });
+          });
+        });
+        return { g, words };
+      })();
+      const roles = ['IT officer', 'Businessman', 'His wife', 'Chaiwala'];
+      const LINES = [['VANKAYA ANTE', 'NAAKU BHAYAM.'], ['NEE BANK', 'BALANCE ENTHA?']];
+      return (s, u) => {
+        players.forEach(p => p.set()); roleT.forEach(t => op(t, 0)); phones.forEach(p => p.show(0));
+        scene.hide(); sceneL.hide(); big.show(0); [secL, l1, l2].forEach(l => l.hide()); next.hide(); tap.set(0, 0, 0); rows.forEach(r => op(r, 0)); recT.hide(); op(bub.g, 0);
+        const small = (o, y = 136) => X.forEach((x, i) => { phones[i].show(o); phones[i].at(x, y, 1.15); });
+        if (s === 0) {
+          X.forEach((x, i) => {
+            const o = pr(u, 200 + i * 350, 400);
+            players[i].set({ o: lerp(.15, 1, o) }); phones[i].show(o); phones[i].at(x, 136 + 12 * (1 - ease(o)), 1.15);
+          });
+        } else if (s === 1) {
+          small(1);
+          sceneL.set('THE SCENE', 160, 46, 8, 'var(--muted)', { o: pr(u, 0, 300) });
+          scene.set('INCOME TAX RAID', 160, 72, 26, 'var(--text)', { s: pop(u, 150) });
+          X.forEach((x, i) => { const a = 1300 + i * 450; if (u > a) { roleT[i].textContent = roles[i]; op(roleT[i], pr(u, a, 300)); } });
+        } else if (s === 2) {
+          // the phone comes up, the line shows, then S talks in character and slips the line in
+          const k = ease(pr(u, 0, 700)), m = ease(pr(u, 1900, 600));
+          roleT.forEach((t, i) => { t.textContent = roles[i]; op(t, 1 - k); });
+          small(1 - k);
+          players.forEach((p, i) => p.set({ o: i === ME ? 1 : 1 - .75 * k, ring: i === ME ? k : 0, ringC: LC }));
+          const bs = lerp(lerp(1.15, 2.6, k), 1.75, m), bx = lerp(lerp(X[ME], 160, k), 50, m), by = lerp(lerp(136, 90, k), 92, m), f = bs / 2.6;
+          big.show(1); big.at(bx, by, bs);
+          const swap = u > 7300, ln = LINES[swap ? 1 : 0], lo = swap ? pr(u, 7400, 300) : pr(u, 500, 300) * (1 - pr(u, 7000, 200));
+          secL.set('YOUR LINE TO SNEAK IN', bx, by - 22 * f, 4.4 * f, '#9a9ab8', { o: pr(u, 500, 300), maxW: 56 * f });
+          l1.set(ln[0], bx, by - 6 * f, 8.6 * f, '#fff', { o: lo });
+          l2.set(ln[1], bx, by + 6 * f, 8.6 * f, '#fff', { o: lo });
+          // the speech bubble: words come in one by one, the line itself in blue
+          const bo = pr(u, 2400, 300) * (1 - pr(u, 7000, 300));
+          op(bub.g, bo);
+          bub.words.forEach(w => w.e.setAttribute('fill-opacity', pr(u, 2600 + w.n * 170, 140).toFixed(2)));
+          if (u > 6200) {
+            next.set(bx, by + 30 * f, pr(u, 6200, 250) * (1 - pr(u, 7300, 150)), pr(u, 6800, 120) - pr(u, 6920, 120));
+            tap.set(bx, by + 30 * f, pr(u, 6850, 600), 26);
+          }
+        } else {
+          players.forEach(p => p.set({ o: .25 }));
+          recT.set("EVERYONE'S LINES", 160, 30, 15, 'var(--text)', { o: pr(u, 0, 300) });
+          rows.forEach((r, i) => op(r, pr(u, 300 + i * 420, 350)));
+        }
+      };
+    }
+  };
+
+  // ══ hand-off with the core ═══════════════════════════════════
+  const keepOpen = v => { if (v.isLeader && v.room.phase === 'play' && v.room.open !== true) firebase.database().ref(`rooms/${v.code}/open`).set(true).catch(() => {}); };
+  UI.mount({
+    game: {
+      howto: HOWTO,
+      id: 'lines', name: 'Lines', shelf: 'Play together', color: 'var(--lines)', glyph: 'L',
+      pitch: 'Act out a scene together. Your phone keeps handing you lines to sneak into what you say.',
+      facts: ['2+ players', 'Each on own phone', 'No timer'],
+      rules: ['Everyone joins the room on their own phone. The leader starts the game.',
+              'Every phone shows the same scene with a few example roles. Pick a role that fits. The examples are only ideas, so make up your own too.',
+              'Your phone also gives you a line. Keep talking in your role and slip the line in somewhere, then tap NEXT SENTENCE for a new one.',
+              'No timer, no scores. The leader ends the scene and starts the next one.',
+              'When the game ends, everyone sees all the lines each player got. Nobody in the room gets the same line twice.'],
+      min: 2, max: 20,
+      startPhase: 'play',
+      startState: () => ({ gid: Date.now() + Math.random().toString(36).slice(2, 6), cycle: 0, scene: 1, th: pickTheme(), live: true }),
+    },
+    gameNames: { pictionary: 'Pictionary', imposter: 'Imposter', tictactoe: 'Tic Tac Toe', tierd: "Tier'd", likely: "Who's More Likely", wavelength: 'Wavelength', blindspot: 'Blindspot', cluepool: 'Clue Pool', lines: 'Lines' },
+    onStart: v => { V = v; code = v.code; gameId = null; game.classList.add('on'); render(); keepOpen(v); },
+    onUpdate: v => { V = v; code = v.code; render(); keepOpen(v); },
+    onLobby: () => { V = null; gameId = null; mine = null; busy = false; shownTheme = null; dropWake(); closeSheet(); game.classList.remove('on'); },
+  });
+})();
+</script>
+</body>
+</html>

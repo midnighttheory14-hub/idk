@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Higher or Lower · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.1">
+<style>
+  /* Higher or Lower: solo. Two movies, one stat; tap the winner. One wrong tap ends the run. */
+  :root{--c:var(--blue)}
+  [hidden]{display:none!important}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{user-select:none;-webkit-user-select:none;touch-action:manipulation}
+  .gs{display:none;position:fixed;inset:0;flex-direction:column;
+      padding:calc(10px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px))}
+  .gs.on{display:flex;animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  .wrap{flex:1;min-height:0;display:flex;flex-direction:column;max-width:460px;width:100%;margin:0 auto}
+  .go{background:var(--c);box-shadow:0 10px 26px color-mix(in srgb,var(--c) 35%,transparent)}
+  .loop{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:clamp(12px,2.4dvh,20px)}
+  .loop span{font-size:10.5px;letter-spacing:1px;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:6px 10px;display:inline-flex;gap:6px;align-items:center}
+  .loop span b{font-family:var(--display);font-weight:400;font-size:14px;color:var(--c)}
+  .loop i{font-style:normal;color:var(--muted);font-size:12px}
+  .bestline{margin-top:clamp(12px,2.4dvh,20px);font-size:11px;letter-spacing:2px;color:var(--muted)}
+  .bestline b{font-family:var(--display);font-weight:400;font-size:24px;letter-spacing:1px;color:var(--text);margin-left:6px;vertical-align:-3px}
+
+  /* playing */
+  #s-play{background:radial-gradient(70% 45% at 20% 8%,color-mix(in srgb,var(--c) 11%,transparent),transparent 70%),radial-gradient(50% 45% at 85% 92%,color-mix(in srgb,var(--accent) 8%,transparent),transparent 70%),var(--bg)}
+  .top{display:flex;align-items:center;gap:10px;max-width:900px;width:100%;margin:0 auto}
+  .stat{display:flex;flex-direction:column;line-height:1}
+  .stat small{font-size:9.5px;letter-spacing:2px;color:var(--muted)}
+  .stat b{font-family:var(--display);font-weight:400;font-size:28px;letter-spacing:1px}
+  .stat.sc b{color:var(--c)}
+  .stat b.bump{animation:bump .45s cubic-bezier(.2,1.6,.4,1)}
+  @keyframes bump{40%{transform:scale(1.35)}}
+  .top .sp{flex:1}
+  .q{text-align:center;margin:clamp(8px,2dvh,18px) 0 clamp(10px,2dvh,16px)}
+  .q small{display:block;font-size:10.5px;letter-spacing:3px;color:var(--muted);margin-bottom:6px}
+  .q h2{font-family:var(--display);font-weight:400;font-size:clamp(30px,min(8.6vw,6.4dvh),52px);letter-spacing:2px;line-height:1}
+  .q h2 em{font-style:normal;color:var(--c)}
+  .q.in{animation:qIn .4s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes qIn{from{opacity:0;transform:translateY(8px)}}
+  .pair{flex:1;min-height:0;width:100%;max-width:900px;margin:0 auto;display:grid;grid-template-rows:1fr 1fr;gap:12px;position:relative}
+  @media (orientation:landscape){.pair{grid-template-rows:1fr;grid-template-columns:1fr 1fr}}
+  .vs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:var(--bg);border:1.5px solid var(--border);
+      display:grid;place-items:center;font-family:var(--display);font-size:18px;letter-spacing:1px;color:var(--muted);z-index:2;pointer-events:none}
+  .m{position:relative;border-radius:22px;background:var(--surface);color:var(--text);font-family:var(--mono);border:1.5px solid var(--border);box-shadow:var(--lift);display:flex;flex-direction:column;align-items:center;justify-content:center;
+     gap:clamp(6px,1.4dvh,12px);padding:16px;text-align:center;cursor:pointer;transition:border-color .3s,background .3s,transform .15s,opacity .3s;min-height:0;overflow:hidden}
+  .m:active{transform:scale(.98)}
+  .m.in{animation:mIn .45s cubic-bezier(.2,.7,.2,1) both}
+  .m.in + .m.in{animation-delay:.06s}
+  @keyframes mIn{from{opacity:0;transform:translateY(12px) scale(.98)}}
+  .m .nm{font-family:var(--display);font-weight:400;font-size:clamp(28px,min(8.4vw,5.6dvh),50px);letter-spacing:1.5px;line-height:1;text-wrap:balance;overflow-wrap:normal}
+  .m .val{font-family:var(--display);font-weight:400;font-size:clamp(34px,min(10vw,7dvh),64px);letter-spacing:2px;line-height:1;min-height:1em;opacity:0;transform:translateY(10px);transition:opacity .45s ease,transform .45s ease;font-variant-numeric:tabular-nums}
+  .m .tag{position:absolute;top:12px;right:14px;font-size:9.5px;letter-spacing:2px;opacity:0;transition:opacity .3s .25s}
+  .m.rev .val{opacity:1;transform:none}
+  .m.off{pointer-events:none}
+  .m.win{border-color:var(--green);background:color-mix(in srgb,var(--green) 9%,var(--surface))}
+  .m.win .val,.m.win .tag{color:var(--green)} .m.win .tag{opacity:1}
+  .m.wrong{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+  .m.wrong .val,.m.wrong .tag{color:var(--accent)} .m.wrong .tag{opacity:1}
+  .m.lose{opacity:.7}
+
+  /* run over */
+  .over{position:absolute;inset:0;z-index:5;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;padding:24px;
+        background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(6px)}
+  .over.on{display:flex;animation:fwd .45s cubic-bezier(.2,.7,.2,1) both}
+  .over small{font-size:11px;letter-spacing:3px;color:var(--muted)}
+  .over .big{font-family:var(--display);font-weight:400;font-size:clamp(110px,min(34vw,24dvh),180px);line-height:.9;color:var(--c)}
+  .over .msg{font-size:12px;color:var(--muted);min-height:1.2em}
+  .over .msg.new{color:var(--green)}
+  .over .acts{display:flex;flex-direction:column;gap:10px;width:min(320px,100%);margin-top:clamp(14px,3dvh,26px)}
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- 1. ENTRY -->
+  <section class="gs on" id="s-home">
+    <div class="bar">
+      <button class="icon-btn" type="button" id="homeBtn" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="chipbtn" type="button" data-rules>How to play</button>
+    </div>
+    <div class="wrap">
+      <div class="hero">
+        <div class="glyph" aria-hidden="true">H</div>
+        <div class="kind"><i></i>Solo</div>
+        <h1>HIGHER OR LOWER</h1>
+        <p>Two movies, one stat. Tap the one that wins. One wrong tap ends the run.</p>
+        <div class="loop"><span><b>1</b>RELEASE YEAR</span><span><b>2</b>IMDb RATING</span><span><b>3</b>SONGS</span><span><b>4</b>RUNTIME</span><i>then repeat</i></div>
+        <div class="bestline">YOUR BEST <b id="homeBest">0</b></div>
+      </div>
+      <button class="btn go" type="button" id="startBtn">START</button>
+    </div>
+  </section>
+
+  <!-- 2. A ROUND -->
+  <section class="gs" id="s-play">
+    <div class="top">
+      <div class="stat sc"><small>SCORE</small><b id="sc">0</b></div>
+      <div class="stat"><small>BEST</small><b id="best">0</b></div>
+      <span class="sp"></span>
+      <button class="icon-btn" type="button" id="stopBtn" aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="q" id="q"><small id="qs"></small><h2 id="qh"></h2></div>
+    <div class="pair" id="pair"></div>
+    <div class="over" id="over">
+      <small>YOUR SCORE</small>
+      <div class="big" id="fs">0</div>
+      <div class="msg" id="fm"></div>
+      <div class="acts"><button class="btn go" type="button" id="againBtn">PLAY AGAIN</button><button class="btn outline" type="button" id="quitBtn">STOP</button></div>
+    </div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet" id="rulesSheet" aria-label="How to play"><div class="grab"></div><h3>HOW TO PLAY</h3>
+  <div class="rules">
+    <div class="rule"><b>1</b><span>Two movies appear with a question, like "Which came out later?"</span></div>
+    <div class="rule"><b>2</b><span>Tap the movie that wins. Both numbers show, green for the right one.</span></div>
+    <div class="rule"><b>3</b><span>The stat changes every round: release year, rating, songs, runtime, then again. One wrong tap ends the run. Beat your best.</span></div>
+  </div>
+  <button class="btn outline" type="button" data-close>GOT IT</button>
+</section>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // ═════════════ MOVIE DATA (edit here) ═════════════
+  // y = release year · r = IMDb rating · s = number of songs on the soundtrack (ROUGH ESTIMATE) · t = runtime in minutes
+  // These numbers were written from memory and are approximate: please verify them, the song counts most of all.
+  const MOVIES = [
+    {n:'RRR', y:2022, r:7.8, s:6, t:187},
+    {n:'Baahubali: The Beginning', y:2015, r:8.0, s:7, t:159},
+    {n:'Baahubali 2: The Conclusion', y:2017, r:8.2, s:5, t:167},
+    {n:'Pushpa: The Rise', y:2021, r:7.6, s:6, t:179},
+    {n:'Magadheera', y:2009, r:7.7, s:6, t:166},
+    {n:'Arjun Reddy', y:2017, r:8.0, s:7, t:182},
+    {n:'Eega', y:2012, r:7.7, s:3, t:134},
+    {n:'Srimanthudu', y:2015, r:7.3, s:6, t:160},
+    {n:'Ala Vaikunthapurramuloo', y:2020, r:7.3, s:7, t:165},
+    {n:'Rangasthalam', y:2018, r:8.2, s:7, t:179},
+    {n:'Jersey', y:2019, r:8.4, s:4, t:160},
+    {n:'Geetha Govindam', y:2018, r:7.7, s:7, t:143},
+    {n:'Sita Ramam', y:2022, r:8.5, s:6, t:163},
+    {n:'Mahanati', y:2018, r:8.4, s:6, t:177},
+    {n:'Hanu-Man', y:2024, r:7.8, s:4, t:158},
+    {n:'Kalki 2898 AD', y:2024, r:7.0, s:3, t:181},
+    {n:'Salaar: Part 1 – Ceasefire', y:2023, r:6.4, s:4, t:175},
+    {n:'Dasara', y:2023, r:6.2, s:6, t:156},
+    {n:'Major', y:2022, r:8.1, s:3, t:149},
+    {n:'Gabbar Singh', y:2012, r:7.4, s:6, t:163},
+    {n:'Race Gurram', y:2014, r:7.2, s:7, t:156},
+    {n:'Manam', y:2014, r:8.3, s:5, t:137},
+    {n:'Akhanda', y:2021, r:7.1, s:5, t:167},
+    {n:'Bharat Ane Nenu', y:2018, r:7.5, s:6, t:173},
+    {n:'Aravinda Sametha Veera Raghava', y:2018, r:7.2, s:6, t:169},
+    {n:'Athadu', y:2005, r:8.0, s:5, t:165},
+    {n:'Pokiri', y:2006, r:7.8, s:5, t:165},
+    {n:'Okkadu', y:2003, r:7.8, s:6, t:169},
+    {n:'Simhadri', y:2003, r:7.4, s:6, t:172},
+    {n:'Arya', y:2004, r:7.4, s:6, t:165},
+    {n:'Bommarillu', y:2006, r:8.0, s:6, t:155},
+    {n:'Pelli Choopulu', y:2016, r:7.9, s:4, t:139},
+    {n:'Kshanam', y:2016, r:7.9, s:2, t:127},
+    {n:'Goodachari', y:2018, r:7.9, s:3, t:147},
+    {n:'Evaru', y:2019, r:7.9, s:2, t:120},
+    {n:'Mirchi', y:2013, r:7.5, s:6, t:160},
+    {n:'Dookudu', y:2011, r:7.4, s:6, t:165},
+    {n:'Attarintiki Daredi', y:2013, r:7.4, s:6, t:166},
+    {n:'Temper', y:2015, r:7.3, s:5, t:150},
+    {n:'Janatha Garage', y:2016, r:7.0, s:5, t:160},
+    {n:'Maharshi', y:2019, r:7.3, s:6, t:177},
+    {n:'Sarileru Neekevvaru', y:2020, r:6.2, s:6, t:169},
+    {n:'Pushpa 2: The Rule', y:2024, r:6.1, s:6, t:200},
+    {n:'Oopiri', y:2016, r:7.9, s:4, t:150},
+    {n:'Vedam', y:2010, r:8.1, s:5, t:160}
+  ];
+
+  // The loop. "gap" = how far apart the two values must be, so no round is a coin flip.
+  const STATS = [
+    {k:'y', q:'Which came out LATER?',        lab:'Release year',  fmt:v => String(v),                 ok:(a,b) => Math.abs(a-b) >= 2},
+    {k:'r', q:'Which is rated HIGHER?',       lab:'IMDb rating',   fmt:v => v.toFixed(1) + ' ★',       ok:(a,b) => Math.abs(a-b) >= .6},
+    {k:'s', q:'Which has MORE songs?',         lab:'Number of songs', fmt:v => v + ' songs', ok:(a,b) => Math.abs(a-b) >= 2},
+    {k:'t', q:'Which is LONGER?',             lab:'Runtime',       fmt:v => v + ' min',                ok:(a,b) => Math.abs(a-b) >= 12}
+  ];
+
+  // ── theme: follows the phone unless the player chose one in Profile ──
+  const sysDark = matchMedia('(prefers-color-scheme: dark)');
+  function theme() {
+    let pref = 'system'; try { pref = localStorage.getItem('cf_theme') || 'system'; } catch (e) {}
+    const t = pref === 'system' ? (sysDark.matches ? 'dark' : 'light') : pref;
+    document.documentElement.dataset.theme = t;
+    document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#f4f4f8' : '#0a0a0f';
+  }
+  theme(); sysDark.addEventListener('change', theme);
+
+  let round = 0, score = 0, cur = null, lock = false, lastNames = [], timer = null;
+  const bestGet = () => { try { return parseInt(localStorage.getItem('cf_hol_best')) || 0; } catch (e) { return 0; } };
+  const bestSet = v => { try { localStorage.setItem('cf_hol_best', v); } catch (e) {} };
+  function show(id) { document.querySelectorAll('#game .gs').forEach(s => s.classList.toggle('on', s.id === id)); }
+  $('homeBest').textContent = bestGet();
+
+  function pickPair(st) {
+    for (let i = 0; i < 400; i++) {
+      const a = MOVIES[Math.floor(Math.random() * MOVIES.length)], b = MOVIES[Math.floor(Math.random() * MOVIES.length)];
+      if (a === b || !st.ok(a[st.k], b[st.k])) continue;
+      if (lastNames.includes(a.n) || lastNames.includes(b.n)) continue;     // don't repeat movies from the last round
+      return [a, b];
+    }
+    for (let i = 0; i < 400; i++) {   // fallback: ignore the repeat rule
+      const a = MOVIES[Math.floor(Math.random() * MOVIES.length)], b = MOVIES[Math.floor(Math.random() * MOVIES.length)];
+      if (a !== b && st.ok(a[st.k], b[st.k])) return [a, b];
+    }
+    return null;
+  }
+  // the key word of the question in colour: "Which came out LATER?" → LATER in blue
+  const qHTML = q => esc(q).replace(/\b([A-Z]{3,})\b/, '<em>$1</em>');
+  function fitNames() {
+    document.querySelectorAll('#pair .nm').forEach(n => {
+      n.style.fontSize = ''; let fs = parseFloat(getComputedStyle(n).fontSize);
+      const box = n.parentElement;
+      while ((n.scrollWidth > n.clientWidth + 1 || n.offsetHeight > box.clientHeight * .5) && fs > 18) { fs -= 2; n.style.fontSize = fs + 'px'; }
+    });
+  }
+  function startRun() {
+    clearTimeout(timer);
+    round = 0; score = 0; lastNames = []; $('over').classList.remove('on');
+    $('best').textContent = bestGet(); $('sc').textContent = '0'; show('s-play'); nextRound();
+  }
+  function nextRound() {
+    const st = STATS[round % STATS.length], pr = pickPair(st); if (!pr) return endRun();
+    cur = { st, pr }; lock = false; lastNames = pr.map(m => m.n);
+    $('qs').textContent = 'ROUND ' + (round + 1) + ' · ' + st.lab.toUpperCase();
+    $('qh').innerHTML = qHTML(st.q);
+    const q = $('q'); q.classList.remove('in'); void q.offsetWidth; q.classList.add('in');
+    $('pair').innerHTML = pr.map((m, i) => `<button type="button" class="m in" data-i="${i}"><span class="tag"></span><span class="nm">${esc(m.n)}</span><span class="val">${esc(st.fmt(m[st.k]))}</span></button>`).join('') + '<span class="vs">VS</span>';
+    fitNames();
+  }
+  function tap(i) {
+    if (lock || !cur) return; lock = true;
+    const { st, pr } = cur, win = pr[0][st.k] > pr[1][st.k] ? 0 : 1, good = i === win;
+    document.querySelectorAll('#pair .m').forEach((e, k) => {
+      e.classList.add('rev', 'off'); e.classList.add(k === win ? 'win' : (k === i ? 'wrong' : 'lose'));
+      e.querySelector('.tag').textContent = k === win ? 'WINS' : (k === i ? 'YOUR PICK' : '');
+    });
+    if (good) {
+      score++; const s = $('sc'); s.textContent = score; s.classList.remove('bump'); void s.offsetWidth; s.classList.add('bump');
+      if (score > bestGet()) $('best').textContent = score;
+      round++; timer = setTimeout(nextRound, 1500);
+    } else timer = setTimeout(endRun, 1700);
+  }
+  function endRun() {
+    const b = bestGet(); let msg = 'Best: ' + b, isNew = false;
+    if (score > b) { bestSet(score); isNew = true; msg = b ? 'New best! (was ' + b + ')' : 'First score saved'; }
+    $('fs').textContent = score; $('fm').textContent = msg; $('fm').classList.toggle('new', isNew);
+    $('best').textContent = Math.max(b, score); $('homeBest').textContent = Math.max(b, score);
+    $('over').classList.add('on');
+  }
+  addEventListener('resize', () => { if ($('s-play').classList.contains('on')) fitNames(); });
+
+  const closeSheet = () => { $('rulesSheet').classList.remove('open'); $('scrim').classList.remove('open'); };
+  document.addEventListener('click', e => {
+    const t = e.target;
+    const m = t.closest('#pair .m'); if (m) return tap(+m.dataset.i);
+    if (t.closest('#startBtn') || t.closest('#againBtn')) return startRun();
+    if (t.closest('#stopBtn') || t.closest('#quitBtn')) { clearTimeout(timer); return show('s-home'); }
+    if (t.closest('#homeBtn')) return void history.back();
+    if (t.closest('[data-rules]')) { $('rulesSheet').classList.add('open'); $('scrim').classList.add('open'); return; }
+    if (t.closest('#scrim') || t.closest('[data-close]')) return closeSheet();
+  });
+})();
+</script>
+</body>
+</html>

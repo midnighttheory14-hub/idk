@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0a0a0f">
+<title>Pictionary · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  /* Pictionary game screens. Entry page and waiting room come from the core.
+     Every screen fits the phone (and stays above the keyboard): nothing scrolls. */
+  :root{--c:var(--purple)}
+  [hidden]{display:none!important}
+  #game{display:none}
+  #game.on{display:block}
+  #game .gs{display:none;height:100vh;height:var(--app-h,100dvh);overflow:hidden;flex-direction:column;
+      padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px))}
+  #game .gs.on{display:flex}
+  #game .gs.in{animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+
+  /* top bar */
+  .p-mid{display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1;min-width:0}
+  .p-mid b{font-family:var(--display);font-weight:400;font-size:19px;letter-spacing:2.5px}
+  .p-mid small{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
+  .ring{position:relative;width:40px;height:40px;flex:none}
+  .ring svg{width:40px;height:40px;transform:rotate(-90deg)}
+  .ring circle{fill:none;stroke-width:3}
+  .ring .bg{stroke:var(--border)} .ring .fg{stroke:var(--accent2);stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke .3s}
+  .ring.low .fg{stroke:var(--accent)}
+  .ring b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:400;font-size:17px}
+  .ring.low b{color:var(--accent);animation:pulse 1s infinite}
+  @keyframes pulse{50%{transform:scale(1.15)}}
+
+  /* clue line */
+  .clue{flex:none;text-align:center;margin:clamp(6px,1.4dvh,12px) 0 clamp(6px,1.2dvh,10px)}
+  .blanks{display:flex;justify-content:center;flex-wrap:wrap;gap:clamp(4px,1.4vw,7px);row-gap:6px;min-height:clamp(22px,3.6dvh,28px)}
+  .blanks span{flex:none;width:clamp(14px,4.2vw,19px);height:clamp(22px,3.6dvh,28px);border-bottom:2px solid var(--muted);font-family:var(--display);
+               font-size:clamp(18px,3.2dvh,24px);line-height:1;display:grid;place-items:end center;padding-bottom:2px;color:var(--text)}
+  .blanks span.sp{border:0;width:clamp(8px,2.4vw,12px)}
+  .blanks span.sym{border-color:transparent;color:var(--muted)}
+  .blanks span.rev{color:var(--accent2);border-color:var(--accent2);animation:pop .4s cubic-bezier(.2,1.5,.4,1)}
+  .clue small{display:block;margin-top:6px;font-size:10.5px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+  .wordbar{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;margin:clamp(6px,1.4dvh,12px) 0 clamp(6px,1.2dvh,10px);
+           border-radius:14px;padding:clamp(8px,1.4dvh,11px) 14px;background:color-mix(in srgb,var(--accent2) 12%,var(--surface));
+           border:1px solid color-mix(in srgb,var(--accent2) 45%,transparent)}
+  .wordbar small{font-size:10px;letter-spacing:2px;color:var(--muted)}
+  .wordbar b{font-family:var(--display);font-weight:400;font-size:clamp(20px,3.4dvh,26px);letter-spacing:2px;color:var(--accent2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* paper */
+  .paperbox{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+  .paper{position:relative;background:#fff;border-radius:18px;box-shadow:0 0 0 1px var(--border),var(--lift);overflow:hidden;touch-action:none}
+  .paper canvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair}
+  .paper .who{position:absolute;left:10px;top:10px;font-size:10px;letter-spacing:1px;color:#6b6b8c;background:rgba(255,255,255,.85);border-radius:999px;padding:4px 9px;pointer-events:none}
+
+  /* drawing tools */
+  .tools{flex:none;display:grid;gap:clamp(6px,1dvh,8px);margin-top:clamp(8px,1.4dvh,12px)}
+  .swatches{display:flex;justify-content:space-between;gap:4px}
+  .sw{width:clamp(26px,7.6vw,32px);height:clamp(26px,7.6vw,32px);border-radius:50%;border:0;cursor:pointer;background:var(--sc);box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+  .sw.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--sc)}
+  .tline{display:flex;align-items:center;gap:6px}
+  .tb{height:clamp(34px,5.4dvh,40px);min-width:clamp(34px,5.4dvh,40px);border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);
+      display:grid;place-items:center;cursor:pointer;padding:0 8px}
+  .tb.on{background:var(--surface2);box-shadow:inset 0 0 0 1.5px var(--c)}
+  .tb svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .tb i{display:block;border-radius:50%;background:currentColor}
+  .tline .grow{flex:1}
+
+  /* guesses */
+  .feed{flex:none;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;height:clamp(54px,9.6dvh,74px);overflow:hidden;margin-top:clamp(6px,1.2dvh,10px);
+        -webkit-mask-image:linear-gradient(to bottom,transparent,#000 40%);mask-image:linear-gradient(to bottom,transparent,#000 40%)}
+  .fl{flex:none;font-size:12px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:rise .25s ease}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}}
+  .fl b{font-weight:500}
+  .fl .g{color:var(--muted)}
+  .fl.ok{color:var(--green)} .fl.close{color:var(--yellow)} .fl.sys{color:var(--muted);font-style:italic}
+  .gbar{flex:none;display:flex;gap:8px;margin-top:clamp(6px,1.2dvh,10px)}
+  .gbar input{flex:1;min-width:0;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:0 14px;height:clamp(44px,7dvh,52px);
+              color:var(--text);font-family:var(--mono);font-size:16px;outline:none}
+  .gbar input:focus{border-color:var(--c)}
+  .gbar input.shake{animation:shake .3s}
+  @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  .gbar button{width:clamp(44px,7dvh,52px);height:clamp(44px,7dvh,52px);border-radius:14px;border:0;background:var(--c);color:#fff;cursor:pointer;display:grid;place-items:center}
+  .gbar button svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .closehint{flex:none;height:0;overflow:visible;position:relative}
+  .closehint span{position:absolute;left:50%;bottom:6px;transform:translate(-50%,8px);opacity:0;transition:.25s;white-space:nowrap;
+                  background:var(--yellow);color:#16161f;border-radius:999px;padding:6px 12px;font-size:11.5px;font-weight:500}
+  .closehint.show span{opacity:1;transform:translate(-50%,0)}
+  .gotit{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;height:clamp(44px,7dvh,52px);margin-top:clamp(6px,1.2dvh,10px);border-radius:14px;
+         background:color-mix(in srgb,var(--green) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--green) 45%,transparent);font-size:12.5px}
+  .gotit b{font-family:var(--display);font-weight:400;font-size:22px;letter-spacing:1px;color:var(--green)}
+
+  /* pick a movie */
+  .pick{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:clamp(8px,1.6dvh,14px)}
+  .pick h1{font-family:var(--display);font-weight:400;font-size:clamp(34px,6.4dvh,52px);letter-spacing:3px;line-height:.95;text-align:center}
+  .pick p{font-size:12px;color:var(--muted);text-align:center;margin-bottom:clamp(4px,1dvh,10px)}
+  .mv{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:1.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:18px;
+      padding:clamp(12px,2.2dvh,18px) 16px;cursor:pointer;box-shadow:var(--lift);font-family:var(--mono);transition:transform .15s,border-color .2s}
+  .mv:active{transform:scale(.98)}
+  .mv:hover{border-color:var(--dc)}
+  .mv .d{flex:none;width:clamp(52px,8dvh,60px);height:clamp(48px,7dvh,56px);border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb,var(--dc) 15%,var(--surface2));color:var(--dc);
+         font-family:var(--display);font-size:clamp(13px,2dvh,15px);letter-spacing:1px;text-align:center;line-height:1.05}
+  .mv .t{flex:1;min-width:0}
+  .mv .t b{display:block;font-family:var(--display);font-weight:400;font-size:clamp(20px,min(6.4vw,3.8dvh),28px);letter-spacing:1px;line-height:1.05;overflow-wrap:anywhere}
+  .mv .t small{font-size:10.5px;color:var(--muted)}
+  .mv.e{--dc:var(--green)} .mv.m{--dc:var(--yellow)} .mv.h{--dc:var(--accent)}
+  .autopick{text-align:center;font-size:11.5px;color:var(--muted);margin-top:clamp(4px,1dvh,10px)}
+
+  /* someone else is picking */
+  .wait{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(8px,1.6dvh,14px);text-align:center}
+  .wait .pfp.big{width:clamp(72px,14dvh,110px);height:clamp(72px,14dvh,110px);font-size:clamp(32px,6dvh,50px);animation:bob 1.6s ease-in-out infinite}
+  @keyframes bob{50%{transform:translateY(-6px)}}
+  .wait h2{font-family:var(--display);font-weight:400;font-size:clamp(28px,5dvh,40px);letter-spacing:2.5px;line-height:1}
+  .wait p{font-size:12px;color:var(--muted)}
+  .wait .dots::after{content:"";animation:dots 1.4s steps(4) infinite}
+  .upnext{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;justify-content:center}
+  .upnext span{font-size:10.5px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:5px 10px}
+
+  /* end of turn */
+  .reveal{flex:none;text-align:center;margin-top:clamp(6px,2dvh,18px)}
+  .reveal small{font-size:10.5px;letter-spacing:4px;color:var(--muted)}
+  .reveal h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,min(12vw,7dvh),56px);white-space:nowrap;letter-spacing:2.5px;line-height:.95;color:var(--accent2);margin-top:6px;animation:pop .5s cubic-bezier(.2,1.5,.4,1)}
+  .reveal p{font-size:12px;color:var(--muted);margin-top:8px}
+  .thumb{flex:none;align-self:center;width:clamp(90px,19dvh,150px);aspect-ratio:1;border-radius:14px;background:#fff;margin-top:clamp(8px,1.8dvh,16px);box-shadow:0 0 0 1px var(--border);overflow:hidden}
+  .thumb canvas{width:100%;height:100%}
+  .board{flex:none;border-radius:18px;border:1px solid var(--border);background:var(--surface);overflow:hidden;box-shadow:var(--lift);margin-top:clamp(8px,1.8dvh,16px)}
+  .row{display:flex;align-items:center;gap:10px;padding:clamp(4px,.95dvh,9px) 12px;font-size:12.5px;min-width:0}
+  .row + .row{border-top:1px solid var(--border)}
+  .row .pfp{width:clamp(22px,3.6dvh,30px);height:clamp(22px,3.6dvh,30px);font-size:clamp(11px,1.7dvh,14px)}
+  .row .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .nm small{font-size:10px;color:var(--muted);margin-left:6px}
+  .row .plus{font-size:11px;color:var(--green);min-width:30px;text-align:right}
+  .row .plus.no{color:var(--muted)}
+  .row .pts{font-family:var(--display);font-size:clamp(17px,2.7dvh,21px);letter-spacing:1px;min-width:28px;text-align:right}
+  .row.me{background:color-mix(in srgb,var(--accent2) 8%,transparent)}
+  .board.cols{display:grid;grid-template-columns:1fr 1fr}
+  .board.cols .row{border-top:1px solid var(--border);padding-left:8px;padding-right:8px;gap:6px}
+  .board.cols .row:nth-child(-n+2){border-top:0}
+  .board.cols .row:nth-child(odd){border-right:1px solid var(--border)}
+  .board.cols .row .nm small{display:none}
+  .board.cols .row .nm{font-size:11.5px}
+  .nexty{margin-top:auto;padding-top:clamp(8px,1.8dvh,16px);text-align:center;font-size:12px;color:var(--muted);flex:none}
+  .nexty b{color:var(--text);font-weight:500}
+  .bar2{height:3px;border-radius:2px;background:var(--border);margin-top:8px;overflow:hidden}
+  .bar2 i{display:block;height:100%;background:var(--c);width:100%;animation:drain 5s linear forwards}
+  @keyframes drain{to{width:0}}
+
+  /* game over */
+  .final-title{font-family:var(--display);font-size:clamp(30px,6dvh,46px);letter-spacing:4px;text-align:center;margin-top:clamp(0px,1dvh,10px);flex:none}
+  .podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:clamp(4px,2.4dvh,26px) 0 4px;flex:none}
+  .pod{display:flex;flex-direction:column;align-items:center;gap:6px;width:31%;font-size:12px;min-width:0}
+  .pod span.nm{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pod .pfp{width:clamp(36px,6.5dvh,52px);height:clamp(36px,6.5dvh,52px);font-size:clamp(17px,3dvh,23px)}
+  .pod .blk{width:100%;border-radius:12px 12px 4px 4px;display:grid;place-items:center;font-family:var(--display);font-size:clamp(22px,3.6dvh,30px);color:var(--bg)}
+  .pod.p1 .blk{height:clamp(46px,12dvh,110px);background:var(--yellow)} .pod.p2 .blk{height:clamp(38px,9dvh,80px);background:var(--muted)} .pod.p3 .blk{height:clamp(28px,6.5dvh,60px);background:var(--accent2)}
+  .pod .sc{font-family:var(--display);font-size:18px;letter-spacing:1px}
+  .awards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:clamp(6px,1.6dvh,14px) 0 4px;flex:none}
+  .award{border:1px solid var(--border);background:var(--surface);border-radius:16px;padding:clamp(8px,1.4dvh,12px);box-shadow:var(--lift);min-width:0}
+  .award small{font-size:9.5px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+  .award b{display:block;font-family:var(--display);font-weight:400;font-size:clamp(18px,2.8dvh,22px);letter-spacing:1px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .award span{font-size:10.5px;color:var(--muted)}
+  .rest{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:clamp(6px,1.4dvh,12px);flex:none}
+  .chip{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:4px 10px 4px 4px;font-size:11.5px}
+  .chip .pfp{width:22px;height:22px;font-size:11px}
+  .chip b{font-family:var(--display);font-weight:400;font-size:16px;color:var(--muted)}
+  .bottom{margin-top:auto;padding-top:clamp(8px,1.8dvh,18px);display:grid;gap:10px;flex:none}
+
+  @media (prefers-reduced-motion:reduce){#game .gs.in,.fl,.blanks span.rev,.reveal h1,.wait .pfp.big,.ring.low b{animation:none}}
+
+  #leaveSheet p{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px}
+  .paper.ro canvas{cursor:default}
+  .gwait{text-align:center;font-size:12.5px;color:var(--muted);padding:14px 0}
+  .gwait::after{content:"";animation:dots 1.4s steps(4) infinite}
+</style>
+</head>
+<body>
+<div class="app" id="game">
+  <!-- 1. PICK A MOVIE (the drawer) -->
+  <section class="gs" id="g-pick">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="p-mid"><b class="rnd"></b><small>Your turn to draw</small></div>
+      <div class="ring"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="17"/><circle class="fg" cx="20" cy="20" r="17"/></svg><b></b></div>
+    </div>
+    <div class="pick">
+      <h1>PICK A MOVIE</h1>
+      <p>Harder movies are worth more points, for you and the guessers.</p>
+      <div id="choices" style="display:grid;gap:inherit"></div>
+      <p class="autopick">If you don't pick, one is chosen for you when the timer ends</p>
+    </div>
+  </section>
+
+  <!-- 2. SOMEONE ELSE IS PICKING -->
+  <section class="gs" id="g-wait">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="p-mid"><b class="rnd"></b><small class="turnno"></small></div>
+      <div class="ring"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="17"/><circle class="fg" cx="20" cy="20" r="17"/></svg><b></b></div>
+    </div>
+    <div class="wait">
+      <span class="pfp big" id="pickerAv"></span>
+      <h2 id="pickerName"></h2>
+      <p>Get ready to guess<span class="dots"></span></p>
+      <div class="upnext" id="upnext"></div>
+    </div>
+  </section>
+
+  <!-- 3. DRAWING (the drawer) -->
+  <section class="gs" id="g-draw">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="p-mid"><b class="rnd"></b><small id="drawSub"></small></div>
+      <div class="ring"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="17"/><circle class="fg" cx="20" cy="20" r="17"/></svg><b></b></div>
+    </div>
+    <div class="wordbar"><small>DRAW</small><b id="drawWord"></b></div>
+    <div class="paperbox" id="drawBox"><div class="paper" id="drawPaper"><canvas id="drawCanvas"></canvas></div></div>
+    <div class="tools">
+      <div class="swatches" id="swatches"></div>
+      <div class="tline">
+        <button class="tb on" type="button" data-size="4" aria-label="Thin brush"><i style="width:5px;height:5px"></i></button>
+        <button class="tb" type="button" data-size="10" aria-label="Medium brush"><i style="width:9px;height:9px"></i></button>
+        <button class="tb" type="button" data-size="22" aria-label="Thick brush"><i style="width:14px;height:14px"></i></button>
+        <button class="tb" type="button" data-eraser aria-label="Eraser"><svg viewBox="0 0 24 24"><path d="M16 4l5 5-10 10H6l-3-3 13-12z"/><path d="M9 9l6 6M6 19h14"/></svg></button>
+        <span class="grow"></span>
+        <button class="tb" type="button" data-undo aria-label="Undo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
+        <button class="tb" type="button" data-clear aria-label="Clear"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+      </div>
+    </div>
+    <div class="feed" id="drawFeed"></div>
+  </section>
+
+  <!-- 4. GUESSING (everyone else) -->
+  <section class="gs" id="g-guess">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="p-mid"><b class="rnd"></b><small id="guessSub"></small></div>
+      <div class="ring"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="17"/><circle class="fg" cx="20" cy="20" r="17"/></svg><b></b></div>
+    </div>
+    <div class="clue"><div class="blanks" id="blanks"></div><small id="clueNote"></small></div>
+    <div class="paperbox" id="guessBox"><div class="paper ro" id="guessPaper"><canvas id="guessCanvas"></canvas></div></div>
+    <div class="feed" id="guessFeed"></div>
+    <div class="closehint" id="closeHint"><span>So close! Check your spelling</span></div>
+    <form class="gbar" id="gbar" autocomplete="off"><input id="gin" type="text" placeholder="Type the movie…" maxlength="40" enterkeyhint="send" autocapitalize="off" autocorrect="off" spellcheck="false"><button type="submit" aria-label="Send guess"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></form>
+    <div class="gotit" id="gotit" hidden><span>You got it!</span><b id="gotPts"></b><span style="color:var(--muted)">Waiting for the others</span></div>
+  </section>
+
+  <!-- 5. END OF TURN -->
+  <section class="gs" id="g-turn">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="p-mid"><b class="rnd"></b><small class="turnno"></small></div>
+      <span style="width:40px"></span>
+    </div>
+    <div class="reveal"><small id="revealTop">THE MOVIE WAS</small><h1 id="revealWord"></h1><p id="revealSub"></p></div>
+    <div class="thumb"><canvas id="thumb" width="300" height="300"></canvas></div>
+    <div class="board" id="turnBoard"></div>
+    <div class="nexty" id="nexty"></div>
+  </section>
+
+  <!-- 6. GAME OVER -->
+  <section class="gs" id="g-final">
+    <div class="final-title">GAME OVER</div>
+    <p class="autopick" id="finalSub" style="margin-top:4px"></p>
+    <div class="podium" id="podium"></div>
+    <div class="awards" id="awards"></div>
+    <div class="rest" id="rest"></div>
+    <div class="bottom" id="finalBottom"></div>
+  </section>
+</div>
+
+<div class="scrim" id="gScrim"></div>
+<section class="sheet" id="leaveSheet" aria-label="Leave"><div class="grab"></div><h3>LEAVE THE GAME?</h3>
+  <p>The others keep playing without you. You can join again between turns with the room code.</p>
+  <div class="two"><button class="btn outline" type="button" data-stay>STAY</button><button class="btn" type="button" id="leaveYes">LEAVE</button></div></section>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
+<script src="core/core.js?v=0.2.1"></script>
+<script src="core/howto.js?v=0.2.0"></script>
+<script src="core/core-ui.js?v=0.2.3"></script>
+<script>
+(() => {
+  'use strict';
+  const C = Cinefied, UI = CinefiedUI, esc = C.esc;
+  const $ = id => document.getElementById(id);
+  const game = $('game');
+  const COLORS = ['#16161f', '#ff3f3f', '#ff8c42', '#ffd93d', '#3fbf7f', '#5b8fff', '#c084fc', '#8b5a2b', '#ffffff'];
+  const DIFF = { easy: ['EASY', '×1'], medium: ['MED', '×1.5'], hard: ['HARD', '×2'] };
+  const SEND_MS = 80;           // how often a stroke being drawn is sent to the others
+
+  let V = null, shown = null, skew = 0, code = null;
+  const busy = new Set();
+
+  // ── keep the screen above the phone keyboard ──
+  function fitViewport() {
+    const h = window.visualViewport ? window.visualViewport.height : innerHeight;
+    document.documentElement.style.setProperty('--app-h', Math.round(h) + 'px');
+    if (window.visualViewport) scrollTo(0, 0);
+    refit();
+  }
+  if (window.visualViewport) visualViewport.addEventListener('resize', fitViewport);
+  addEventListener('resize', fitViewport);
+
+  // ── helpers over the room ──
+  const st = () => (V && V.room.state) || {};
+  const ph = () => (V ? V.room.phase : null);
+  const nameOf = u => (V && V.room.players[u] && V.room.players[u].name) || (st().names || {})[u] || 'Player';
+  const isMe = u => V && u === V.me;
+  const iDraw = () => V && st().drawer === V.me;
+  const av = (u, cls) => `<span class="pfp${cls ? ' ' + cls : ''}" style="--pc:${isMe(u) ? 'linear-gradient(135deg,var(--accent),var(--accent2))' : UI.avColor(u)}">${UI.initial(nameOf(u))}</span>`;
+  const now = () => Date.now() + skew;
+
+  function show(id) {
+    if (shown === id) return;
+    shown = id;
+    document.querySelectorAll('#game .gs').forEach(s => { s.className = 'gs' + (s.id === id ? ' on in' : ''); });
+    requestAnimationFrame(refit);
+  }
+  async function ask(action, extra) {
+    const key = action + (extra && extra.i !== undefined ? extra.i : '');
+    if (busy.has(key)) return {};
+    busy.add(key);
+    const r = await C.referee(action, extra);
+    busy.delete(key);
+    if (!r.ok && !['phase', 'noop', 'abort', 'drawer'].includes(r.error)) UI.say(C.message({ code: r.error }));
+    return r;
+  }
+
+  // ══ the drawing ══════════════════════════════════════════════
+  // Each stroke is its own small record under draw/CODE: {c: colour, w: width, e: eraser, p: "x,y x,y ..."} with points 0..1000.
+  // Phones only receive the strokes that change, so it stays smooth however big the drawing gets.
+  const strokes = new Map();      // id -> stroke (from the database, plus our own while drawing)
+  let drawRef = null, dirty = false;
+  const pen = { color: COLORS[0], size: 4, eraser: false };
+  let live = null, liveTimer = null;
+  const decode = p => (p ? p.split(' ').map(xy => xy.split(',').map(Number)) : []);
+  function listenDrawing(c) {
+    if (drawRef) drawRef.off();
+    strokes.clear(); dirty = true;
+    drawRef = firebase.database().ref('draw/' + c);
+    const put = s => { if (live && s.key === live.id) return; strokes.set(s.key, s.val()); dirty = true; };
+    drawRef.on('child_added', put); drawRef.on('child_changed', put);
+    drawRef.on('child_removed', s => { strokes.delete(s.key); dirty = true; });
+  }
+  function stopDrawing() { if (drawRef) drawRef.off(); drawRef = null; strokes.clear(); }
+  function paint(cv) {
+    const g = cv.getContext('2d'), W = cv.width;
+    g.fillStyle = '#fff'; g.fillRect(0, 0, W, W); g.lineCap = g.lineJoin = 'round';
+    const ids = [...strokes.keys()].sort();
+    for (const id of ids) {
+      const s = strokes.get(id), pts = s._pts || decode(s.p);
+      if (!pts.length) continue;
+      g.strokeStyle = s.e ? '#fff' : s.c; g.lineWidth = s.w * W / 1000;
+      g.beginPath(); g.moveTo(pts[0][0] * W / 1000, pts[0][1] * W / 1000);
+      if (pts.length === 1) g.lineTo(pts[0][0] * W / 1000 + .1, pts[0][1] * W / 1000);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2;
+        g.quadraticCurveTo(pts[i][0] * W / 1000, pts[i][1] * W / 1000, mx * W / 1000, my * W / 1000);
+      }
+      if (pts.length > 1) { const l = pts[pts.length - 1]; g.lineTo(l[0] * W / 1000, l[1] * W / 1000); }
+      g.stroke();
+    }
+  }
+  function sizeCanvas(box, paper, cv) {
+    const r = box.getBoundingClientRect(), s = Math.floor(Math.min(r.width, r.height));
+    if (s <= 0) return;
+    paper.style.width = paper.style.height = s + 'px';
+    const px = Math.round(s * (window.devicePixelRatio || 1));
+    if (cv.width !== px) { cv.width = cv.height = px; dirty = true; }
+  }
+  function refit() {
+    if (shown === 'g-draw') sizeCanvas($('drawBox'), $('drawPaper'), $('drawCanvas'));
+    if (shown === 'g-guess') sizeCanvas($('guessBox'), $('guessPaper'), $('guessCanvas'));
+    dirty = true;
+  }
+  (function frame() {
+    if (dirty) {
+      dirty = false;
+      if (shown === 'g-draw') paint($('drawCanvas'));
+      if (shown === 'g-guess') paint($('guessCanvas'));
+    }
+    requestAnimationFrame(frame);
+  })();
+
+  // drawing with a finger or mouse (drawer only)
+  const cvD = $('drawCanvas');
+  const rel = e => { const r = cvD.getBoundingClientRect(); return [Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * 1000), Math.round(Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)) * 1000)]; };
+  const strokeId = () => String(now()).padStart(14, '0') + Math.random().toString(36).slice(2, 6);
+  function sendLive(final) {
+    if (!live || !code) return;
+    const s = { c: pen.eraser ? '#ffffff' : live.c, w: live.w, p: live._pts.map(p => p.join(',')).join(' ') };
+    if (live.e) s.e = true;
+    firebase.database().ref(`draw/${code}/${live.id}`).set(s).catch(() => {});
+    if (final) { strokes.set(live.id, Object.assign(s, { _pts: live._pts })); live = null; }
+  }
+  cvD.addEventListener('pointerdown', e => {
+    if (ph() !== 'draw' || !iDraw()) return;
+    cvD.setPointerCapture(e.pointerId);
+    live = { id: strokeId(), c: pen.color, w: Math.round(pen.size * 2.6), e: pen.eraser, _pts: [rel(e)] };
+    strokes.set(live.id, live); dirty = true;
+    clearInterval(liveTimer); liveTimer = setInterval(() => sendLive(false), SEND_MS);
+    sendLive(false);
+  });
+  cvD.addEventListener('pointermove', e => {
+    if (!live) return;
+    const p = rel(e), l = live._pts[live._pts.length - 1];
+    if (Math.abs(p[0] - l[0]) + Math.abs(p[1] - l[1]) < 4) return;
+    if (live._pts.length >= 1500) return;
+    live._pts.push(p); dirty = true;
+  });
+  const lift = () => { if (!live) return; clearInterval(liveTimer); sendLive(true); };
+  cvD.addEventListener('pointerup', lift); cvD.addEventListener('pointercancel', lift);
+
+  // ══ timers ═══════════════════════════════════════════════════
+  // The server decides; phones just tell it "my timer ran out" (it checks its own clock).
+  const C2 = 2 * Math.PI * 17;
+  const asked = new Set();
+  function tickTimers() {
+    if (!V || !V.room.state) return;
+    const s = st(), p = ph();
+    if (!['pick', 'draw', 'turnover'].includes(p) || !s.deadline) return;
+    const left = Math.max(0, s.deadline - now());
+    const total = p === 'pick' ? 15000 : p === 'draw' ? s.time * 1000 : 6000;
+    const secs = Math.ceil(left / 1000);
+    document.querySelectorAll('#game .gs.on .ring').forEach(r => {
+      const fg = r.querySelector('.fg'); fg.style.strokeDasharray = C2; fg.style.strokeDashoffset = C2 * (1 - left / total);
+      r.querySelector('b').textContent = secs; r.classList.toggle('low', p === 'draw' && secs <= 10);
+    });
+    if (p === 'turnover') { const b = document.querySelector('#nexty .bar2 i'); if (b) b.style.width = (left / total * 100) + '%'; }
+    const tag = (k) => `${s.deal}:${p}:${k}`;
+    const once = k => { if (asked.has(tag(k))) return; asked.add(tag(k)); ask('tick'); };
+    if (left <= 0) {
+      once('end');
+      const late = -left;                       // still here a while after? ask again (the first ask may have been early)
+      if (late > 1500) once('end2');
+      if (late > 4000) once('end3');
+    } else if (p === 'draw') {
+      const f = 1 - left / total;
+      if (f >= 0.5) once('h1');
+      if (f >= 0.75) once('h2');
+      if (f >= 0.9) once('h3');
+    }
+  }
+  setInterval(tickTimers, 250);
+
+  // ══ screens ══════════════════════════════════════════════════
+  function drawBar() {
+    const s = st();
+    document.querySelectorAll('#game .rnd').forEach(e => { e.textContent = `ROUND ${s.round || 1} / ${s.total || 1}`; });
+    const n = (s.order || '').split(',').filter(Boolean).length;
+    document.querySelectorAll('#game .turnno').forEach(e => { e.textContent = `Turn ${(s.turn || 0) + 1}`; });
+  }
+  function feedHTML(forDrawer) {
+    const f = st().feed || {};
+    return Object.keys(f).sort().map(k => {
+      const it = f[k], who = it.u ? (isMe(it.u) ? 'You' : esc(nameOf(it.u))) : '';
+      if (it.k === 'sys') return `<div class="fl sys">${forDrawer ? 'Guesses show up here' : `${esc(nameOf(st().drawer))} is drawing. Type your guess below`}</div>`;
+      if (it.k === 'ok') return `<div class="fl ok"><b>${who}</b> got it!</div>`;
+      if (it.k === 'close') return `<div class="fl close"><b>${who}</b> ${isMe(it.u) ? 'are' : 'is'} close!</div>`;
+      return `<div class="fl"><b>${who}</b> <span class="g">${esc(it.t)}</span></div>`;
+    }).join('');
+  }
+  function setFeed(id, html) { const el = $(id); if (el.dataset.h !== html) { el.dataset.h = html; el.innerHTML = html; } }
+
+  function drawPick() {
+    const s = st(), mine = V.private && V.private[s.deal];
+    const html = mine && mine.choices ? mine.choices.map((c, i) => {
+      const n = c.w.replace(/[^a-z0-9]/gi, '').length, words = c.w.trim().split(/\s+/).length;
+      const cls = c.d === 'easy' ? 'e' : c.d === 'medium' ? 'm' : 'h';
+      return `<button class="mv ${cls}${busy.has('choose' + i) ? ' busy' : ''}" type="button" data-choose="${i}"><span class="d">${DIFF[c.d][0]}<br>${DIFF[c.d][1]}</span>
+        <span class="t"><b>${esc(c.w.toUpperCase())}</b><small>${words > 1 ? words + ' words · ' : ''}${n} letters</small></span></button>`;
+    }).join('') : '<p class="gwait">Dealing</p>';
+    if ($('choices').dataset.h !== html) { $('choices').dataset.h = html; $('choices').innerHTML = html; }
+  }
+  function drawWait() {
+    const s = st(), d = s.drawer;
+    $('pickerAv').outerHTML = av(d, 'big').replace('<span ', '<span id="pickerAv" ');
+    $('pickerName').textContent = `${nameOf(d).toUpperCase()} IS PICKING`;
+    $('upnext').innerHTML = '';
+  }
+  function guessersCount() { return V.players.filter(p => p.uid !== st().drawer && p.online !== false).length; }
+  function drawDraw() {
+    const s = st(), mine = V.private && V.private[s.deal];
+    $('drawWord').textContent = mine && mine.word ? mine.word.toUpperCase() : '…';
+    const n = Object.keys(s.got || {}).length;
+    $('drawSub').textContent = `${n} of ${guessersCount()} guessed`;
+    setFeed('drawFeed', feedHTML(true));
+  }
+  function drawGuess() {
+    const s = st(), mask = s.mask || '';
+    const html = [...mask].map(ch => ch === ' ' ? '<span class="sp"></span>' : ch === '_' ? '<span></span>' : /[A-Z0-9]/.test(ch) ? `<span class="rev">${esc(ch)}</span>` : `<span class="sym">${esc(ch)}</span>`).join('');
+    if ($('blanks').dataset.h !== html) { $('blanks').dataset.h = html; $('blanks').innerHTML = html; }
+    const words = mask.trim().split(/\s+/).length;
+    $('clueNote').textContent = `Movie · ${words > 1 ? words + ' words · ' : ''}${s.len || 0} letters`;
+    $('guessSub').textContent = `${nameOf(s.drawer)} is drawing`;
+    setFeed('guessFeed', feedHTML(false));
+    const got = (s.got || {})[V.me];
+    $('gbar').hidden = !!got; $('gotit').hidden = !got;
+    if (got) { $('gotPts').textContent = '+' + got; $('gin').blur(); }
+  }
+  function ranked() { const sc = st().scores || {}; return V.players.map(p => p.uid).sort((a, b) => (sc[b] || 0) - (sc[a] || 0)); }
+  function drawTurn() {
+    const s = st(), L = s.last || {};
+    const word = L.word || '';
+    const h1 = $('revealWord');
+    if (h1.dataset.w !== word) {
+      h1.dataset.w = word; h1.textContent = word ? word.toUpperCase() : '—';
+      fitReveal();
+      paint($('thumb'));
+    }
+    $('revealTop').textContent = L.why === 'left' && !word ? 'THE DRAWER LEFT' : 'THE MOVIE WAS';
+    const totalG = Math.max(0, V.players.length - 1);
+    $('revealSub').innerHTML = L.why === 'left' ? `${esc(nameOf(L.drawer))} left the game` : `Drawn by <b style="color:var(--text);font-weight:500">${isMe(L.drawer) ? 'you' : esc(nameOf(L.drawer))}</b> · ${L.n || 0} of ${totalG} got it`;
+    const sc = s.scores || {}, tp = s.turnPts || {}, rows = ranked();
+    $('turnBoard').className = 'board' + (rows.length > 5 ? ' cols' : '');
+    $('turnBoard').innerHTML = rows.map(u => `<div class="row${isMe(u) ? ' me' : ''}">${av(u)}<span class="nm">${isMe(u) ? 'You' : esc(nameOf(u))}${u === L.drawer ? '<small>drew</small>' : ''}</span>
+      <span class="plus${tp[u] ? '' : ' no'}">${tp[u] ? '+' + tp[u] : u === L.drawer ? '' : 'missed'}</span><span class="pts">${sc[u] || 0}</span></div>`).join('');
+    if (!$('nexty').firstChild) $('nexty').innerHTML = 'Next turn starting<div class="bar2"><i style="animation:none"></i></div>';
+  }
+  // shrink the movie name until it fits on one line (only measurable once the screen is showing)
+  function fitReveal() {
+    const h1 = $('revealWord');
+    requestAnimationFrame(() => {
+      h1.style.fontSize = ''; let f = parseFloat(getComputedStyle(h1).fontSize);
+      while (h1.scrollWidth > h1.clientWidth && f > 16) { f--; h1.style.fontSize = f + 'px'; }
+    });
+  }
+  function drawFinal() {
+    const s = st(), sc = s.scores || {}, rows = ranked();
+    $('finalSub').textContent = s.short === 'few' ? 'Not enough players to keep going' : s.short === 'ended' ? 'The leader ended the game' : '';
+    const order = [rows[1], rows[0], rows[2]], cls = ['p2', 'p1', 'p3'], rk = [2, 1, 3];
+    $('podium').innerHTML = order.map((u, i) => u ? `<div class="pod ${cls[i]}">${av(u)}<span class="nm">${isMe(u) ? 'You' : esc(nameOf(u))}</span><span class="sc">${sc[u] || 0} PTS</span><div class="blk">${rk[i]}</div></div>` : '').join('');
+    const dp = s.drawPts || {}, art = Object.keys(dp).sort((a, b) => dp[b] - dp[a])[0], q = s.quick;
+    $('awards').innerHTML = `<div class="award"><small>Best artist</small><b>${art ? esc(nameOf(art)) : '—'}</b><span>${art ? dp[art] + ' points from drawing' : 'nobody guessed a drawing'}</span></div>
+      <div class="award"><small>Quickest guess</small><b>${q ? esc(nameOf(q.u)) : '—'}</b><span>${q ? `${esc(q.w)} in ${q.s}s` : 'no correct guesses'}</span></div>`;
+    $('rest').innerHTML = rows.slice(3).map(u => `<span class="chip">${av(u)}${isMe(u) ? 'You' : esc(nameOf(u))} <b>${sc[u] || 0}</b></span>`).join('');
+    const L = V.room.players[V.room.leader];
+    const html = V.isLeader
+      ? `<button class="btn" type="button" data-do="again">PLAY AGAIN</button><button class="btn outline" type="button" data-do="lobby">WAITING ROOM</button>`
+      : `<p class="gwait">Waiting for ${esc(L ? L.name : 'the leader')} to choose</p><button class="btn outline" type="button" data-leave>LEAVE</button>`;
+    if ($('finalBottom').dataset.h !== html) { $('finalBottom').dataset.h = html; $('finalBottom').innerHTML = html; }
+  }
+
+  function render() {
+    if (!V || !V.room.state) return;
+    const p = ph();
+    drawBar();
+    if (p !== 'turnover') $('nexty').innerHTML = '';
+    if (p === 'pick') { if (iDraw()) { drawPick(); show('g-pick'); } else { drawWait(); show('g-wait'); } }
+    else if (p === 'draw') { if (iDraw()) { drawDraw(); show('g-draw'); } else { drawGuess(); show('g-guess'); } }
+    else if (p === 'turnover') { drawTurn(); show('g-turn'); }
+    else if (p === 'final') { drawFinal(); show('g-final'); }
+    tickTimers();
+  }
+
+  // ══ touches ══════════════════════════════════════════════════
+  $('swatches').innerHTML = COLORS.map((c, i) => `<button class="sw${i ? '' : ' on'}" type="button" data-color="${c}" style="--sc:${c}" aria-label="Colour ${i + 1}"></button>`).join('');
+  const closeLeave = () => { $('leaveSheet').classList.remove('open'); $('gScrim').classList.remove('open'); };
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#gScrim') || t.closest('[data-stay]')) return closeLeave();
+    if (t.closest('#leaveYes')) { closeLeave(); return void UI.leaveGame(); }
+    if (!t.closest('#game') || !V) return;
+    if (t.closest('[data-leave]')) { $('leaveSheet').classList.add('open'); $('gScrim').classList.add('open'); return; }
+    const ch = t.closest('[data-choose]'); if (ch) { ask('choose', { i: Number(ch.dataset.choose) }); return drawPick(); }
+    const sw = t.closest('[data-color]');
+    if (sw) { pen.color = sw.dataset.color; pen.eraser = false; document.querySelectorAll('.sw').forEach(x => x.classList.toggle('on', x === sw)); document.querySelector('[data-eraser]').classList.remove('on'); return; }
+    const sz = t.closest('[data-size]'); if (sz) { pen.size = Number(sz.dataset.size); document.querySelectorAll('[data-size]').forEach(x => x.classList.toggle('on', x === sz)); return; }
+    if (t.closest('[data-eraser]')) { pen.eraser = !pen.eraser; t.closest('[data-eraser]').classList.toggle('on', pen.eraser); return; }
+    if (t.closest('[data-undo]')) {
+      const last = [...strokes.keys()].sort().pop();
+      if (last && code) { strokes.delete(last); dirty = true; firebase.database().ref(`draw/${code}/${last}`).remove().catch(() => {}); }
+      return;
+    }
+    if (t.closest('[data-clear]')) { strokes.clear(); dirty = true; if (code) firebase.database().ref('draw/' + code).remove().catch(() => {}); return; }
+    const d = t.closest('[data-do]'); if (d) return void ask(d.dataset.do);
+  });
+  let hideClose;
+  $('gbar').addEventListener('submit', async e => {
+    e.preventDefault();
+    const text = $('gin').value.trim();
+    if (!text || !V || ph() !== 'draw') return;
+    $('gin').value = '';
+    const r = await C.referee('guess', { text });
+    if (r && r.close) {
+      $('closeHint').classList.add('show'); clearTimeout(hideClose); hideClose = setTimeout(() => $('closeHint').classList.remove('show'), 2200);
+      $('gin').classList.add('shake'); setTimeout(() => $('gin').classList.remove('shake'), 300);
+    }
+  });
+
+  // ══ hand-off with the core ═══════════════════════════════════
+  function onRoom(v) {
+    V = v;
+    if (code !== v.code) { code = v.code; listenDrawing(code); }
+    render();
+  }
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = {
+    steps: [
+      { d: 3200, t: 'On your turn, pick one of three movies: easy, medium or hard. Harder ones are worth more.' },
+      { d: 4200, t: 'Draw it. No letters or numbers!' },
+      { d: 5000, t: 'Everyone else types guesses. The faster you guess, the more points you get. Letters appear as time runs out.' },
+      { d: 3800, t: 'The drawer scores for every player who guesses it. Everyone draws once each round.' }
+    ],
+    build(svg, K) {
+      const { el, op, cl, pr, ease, back, lerp, fitLines, Phone, Player, Chip, Label, WidePill, Ripple, COLORS } = K;
+      const ph = Phone(svg); ph.screen('#13131a');
+      const opts = [['EEGA', 'EASY'], ['MAGADHEERA', 'MEDIUM'], ['SAINIKUDU', 'HARD']].map(() => ({ g: el('g', { opacity: 0 }, svg) }));
+      opts.forEach((o, i) => {
+        o.r = el('rect', { x: -27, y: -10, width: 54, height: 20, rx: 6, fill: '#22222e', stroke: '#3a3a52' }, o.g);
+        el('text', { class: 'd', 'text-anchor': 'middle', y: -.5, 'font-size': 9, fill: '#fff' }, o.g, ['EEGA', 'MAGADHEERA', 'SAINIKUDU'][i]);
+        el('text', { class: 'm', 'text-anchor': 'middle', y: 6.5, 'font-size': 4.6, fill: '#9a9ab8' }, o.g, ['EASY · ×1', 'MEDIUM · ×1.5', 'HARD · ×2'][i]);
+      });
+      const board = el('g', { opacity: 0 }, svg);
+      el('rect', { x: 92, y: 18, width: 136, height: 128, rx: 12, fill: '#fff', stroke: 'var(--border)' }, board);
+      // a housefly, drawn stroke by stroke
+      const strokes = ['M160 92m-14 0a14 18 0 1 0 28 0a14 18 0 1 0 -28 0', 'M160 66m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0',
+        'M148 84C118 60 110 92 146 96', 'M172 84C202 60 210 92 174 96', 'M150 104L136 120M170 104L184 120M152 110L144 128M168 110L176 128', 'M155 59L148 46M165 59L172 46'];
+      const lines = strokes.map(d => el('path', { d, fill: 'none', stroke: '#14141c', 'stroke-width': 2.6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-dasharray': 300, 'stroke-dashoffset': 300 }, board));
+      const bar = el('rect', { x: 92, y: 152, height: 4, rx: 2, fill: 'var(--purple)', opacity: 0 }, svg);
+      const hint = Label(svg, 'm');
+      const pen = el('circle', { r: 4, fill: 'var(--purple)', opacity: 0 }, svg);
+      const pl = el('g', {}, svg), drawer = Player(pl, 160, 214, 'R', COLORS[0]);
+      const G = [[36, 60, 'S', 1], [284, 60, 'B', 2], [36, 150, 'A', 3]].map(([x, y, l, i]) => Player(pl, x, y, l, COLORS[i]));
+      const GC = [[40, 28], [280, 28], [40, 182]];
+      const gc = G.map(() => Chip(svg)), pts = G.map(() => Chip(svg)), no = Chip(svg), dc = Chip(svg), tap = Ripple(svg);
+      const pop = (u, a) => back(pr(u, a, 260));
+      const drawUpTo = k => lines.forEach((l, i) => l.setAttribute('stroke-dashoffset', (300 * (1 - cl(k * lines.length - i))).toFixed(1)));
+      return (s, u) => {
+        opts.forEach(o => op(o.g, 0)); op(board, 0); op(bar, 0); op(pen, 0); hint.hide(); [no, dc, ...gc, ...pts].forEach(c => c.hide()); tap.set(0, 0, 0); ph.show(0);
+        drawer.set({ ring: 1 }); G.forEach(g => g.set({ o: s === 0 ? .2 : 1 }));
+        if (s === 0) {
+          ph.show(1); ph.at(160, 106, 2.6 * (.85 + .15 * back(pr(u, 0, 450))));
+          opts.forEach((o, i) => { op(o.g, pr(u, 300 + i * 150, 250)); o.g.setAttribute('transform', `translate(160 ${70 + i * 30})`); o.r.setAttribute('stroke', i === 0 && u > 1500 ? 'var(--purple)' : '#3a3a52'); });
+          tap.set(160, 70, pr(u, 1450, 600), 30);
+        } else {
+          op(board, 1);
+          if (s === 1) {
+            const k = pr(u, 300, 3300); drawUpTo(k);
+            const L = lines[Math.min(lines.length - 1, Math.floor(k * lines.length))];
+            if (k < 1) { const len = L.getTotalLength(), p = L.getPointAtLength(len * cl(k * lines.length % 1)); op(pen, 1); pen.setAttribute('cx', p.x.toFixed(1)); pen.setAttribute('cy', p.y.toFixed(1)); }
+            no.set('No letters or numbers', 160, 244, pop(u, 600));
+          } else {
+            drawUpTo(1);
+            const tk = s === 2 ? u / 5000 : 1; op(bar, 1); bar.setAttribute('width', (136 * (1 - .8 * tk)).toFixed(1));
+            hint.set(s === 2 && u < 2600 ? '_ _ _ _' : 'E _ _ A', 160, 172, 11, 'var(--muted)');
+            if (s === 2) {
+              if (u > 400) gc[0].set('Fly?', GC[0][0], GC[0][1], pop(u, 400));
+              if (u > 1400) { gc[1].set('Eega', GC[1][0], GC[1][1], pop(u, 1400), 'ok'); G[1].set({ ring: 1, ringC: 'var(--green)' }); pts[1].set('+90', 280, 92, pop(u, 1700), 'ok'); }
+              if (u > 3200) { gc[2].set('Eega', GC[2][0], GC[2][1], pop(u, 3200), 'ok'); G[2].set({ ring: 1, ringC: 'var(--green)' }); pts[2].set('+50', 40, 120, pop(u, 3500), 'ok'); }
+            } else {
+              gc[1].set('Eega', GC[1][0], GC[1][1], 1, 'ok'); gc[2].set('Eega', GC[2][0], GC[2][1], 1, 'ok');
+              G[1].set({ ring: 1, ringC: 'var(--green)' }); G[2].set({ ring: 1, ringC: 'var(--green)' });
+              if (u > 400) dc.set('R scores for 2 guessers', 160, 244, pop(u, 400), 'ok');
+              if (u > 2200) { drawer.set({ ring: 0 }); G[0].set({ ring: 1, ringC: 'var(--purple)' }); gc[0].set('S draws next', GC[0][0], GC[0][1], pop(u, 2200)); }
+            }
+          }
+        }
+      };
+    }
+  };
+
+  UI.mount({
+    game: {
+      howto: HOWTO,
+      id: 'pictionary', name: 'Pictionary', shelf: 'Play together', color: 'var(--purple)', glyph: 'P', referee: true,
+      pitch: 'One draws a Telugu movie, everyone else races to guess it.',
+      facts: ['3 to 8 players', 'Each on own phone', '~15 min'],
+      rules: ['On your turn, pick one of three movies: easy, medium or hard. Harder ones are worth more.',
+              'Draw it. No letters or numbers!',
+              'Everyone else types guesses. The faster you guess, the more points you get. Letters appear as time runs out.',
+              'The drawer scores for every player who guesses it. Everyone draws once each round.'],
+      min: 3, max: 8,
+      settings: [
+        { key: 'time', label: 'Time per turn', options: [60, 80, 100], default: 80, show: v => v + 's', summary: v => `${v}s turns` },
+        { key: 'rounds', label: 'Rounds', options: [1, 2, 3], default: 2, summary: v => `${v} round${Number(v) === 1 ? '' : 's'}` },
+      ],
+    },
+    gameNames: { pictionary: 'Pictionary', imposter: 'Imposter', tictactoe: 'Tic Tac Toe', cluepool: 'Clue Pool', tierd: "Tier'd" },
+    onStart: v => { shown = null; game.classList.add('on'); fitViewport(); onRoom(v); },
+    onUpdate: v => onRoom(v),
+    onLobby: () => { V = null; shown = null; code = null; stopDrawing(); closeLeave(); game.classList.remove('on'); },
+  });
+  firebase.database().ref('.info/serverTimeOffset').on('value', s => { skew = Number(s.val()) || 0; });
+})();
+</script>
+</body>
+</html>

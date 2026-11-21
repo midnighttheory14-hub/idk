@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Tier'd · Cinefied</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="core/core.css?v=0.2.3">
+<style>
+  /* Tier'd game screens. Entry page and waiting room come from the core.
+     Tier'd is the one game whose screens scroll: every name in a tier is always visible. */
+  :root{--c:var(--accent2);--tS:#ff3f3f;--tA:#ff8c42;--tB:#ffd93d;--tC:#3fbf7f;--tD:#5b8fff}
+  [hidden]{display:none!important}
+  #game{display:none}
+  #game.on{display:block}
+  #game .gs{display:none;min-height:100vh;min-height:100dvh;flex-direction:column;position:relative;
+      padding:0 14px calc(14px + env(safe-area-inset-bottom,0px))}
+  #game .gs.on{display:flex}
+  #game .gs.in{animation:fwd .42s cubic-bezier(.2,.7,.2,1) both}
+  #s-build{user-select:none;-webkit-user-select:none}
+  #game .gs .bar{position:sticky;top:0;z-index:4;background:var(--bg);padding-top:calc(12px + env(safe-area-inset-top,0px));height:auto;padding-bottom:8px;
+           box-shadow:0 10px 12px -10px var(--bg)}
+  .t-mid{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1;min-width:0;padding:0 6px}
+  .t-mid b{font-family:var(--display);font-weight:400;font-size:19px;letter-spacing:2.5px}
+  .t-mid small{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .who{display:flex;align-items:center;flex:none;padding-left:7px}
+  .who .pfp{width:26px;height:26px;font-size:12px;margin-left:-7px;box-shadow:0 0 0 2px var(--bg)}
+  .who .pfp.done::after{content:"";position:absolute;right:-2px;bottom:-2px;width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 0 2px var(--bg)}
+  .pfp{position:relative}
+
+  /* the board: rows grow to show every name */
+  .board{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+  .tier{min-height:54px;display:flex;border-radius:14px;overflow:hidden;background:var(--surface);box-shadow:inset 0 0 0 1px var(--border);transition:box-shadow .15s,background .15s}
+  .tier .lab{width:48px;flex:none;display:grid;place-items:center;font-family:var(--display);font-size:30px;color:#16161f;background:var(--tc)}
+  .tier .slots{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-content:center;gap:5px;padding:6px 7px}
+  .tier.hot{box-shadow:inset 0 0 0 2px var(--tc);background:color-mix(in srgb,var(--tc) 10%,var(--surface))}
+  .pool-l{font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin:14px 0 6px}
+  .pool{border-radius:14px;border:1.5px dashed var(--border);padding:7px;min-height:56px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:5px;transition:border-color .15s,background .15s}
+  .pool.hot{border-color:var(--muted);background:var(--surface)}
+  .pool:empty::before{content:"All placed. Tap DONE when you're happy";font-size:11px;color:var(--muted);margin:auto}
+  .chip{display:inline-flex;align-items:center;gap:5px;max-width:100%;border-radius:9px;padding:6px 9px;font-size:12.5px;line-height:1.15;
+        background:var(--surface2);border:1px solid var(--border);color:var(--text);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;position:relative;transition:transform .15s}
+  .chip small{color:var(--muted);font-size:.85em}
+  .chip.moved{animation:flash 1.2s ease}
+  .chip.moved::after{content:"";position:absolute;right:3px;top:3px;width:6px;height:6px;border-radius:50%;background:var(--by)}
+  @keyframes flash{0%{box-shadow:0 0 0 2px var(--by)}100%{box-shadow:0 0 0 0 transparent}}
+  .chip.lift{opacity:.25}
+  .ghost{position:fixed;z-index:50;pointer-events:none;transform:translate(-50%,-60%) scale(1.08) rotate(-2deg);box-shadow:0 12px 28px rgba(0,0,0,.35);cursor:grabbing;opacity:.95}
+  .ro .chip{cursor:default}
+
+  /* bottom bar stays on screen while you scroll */
+  .dock{position:sticky;bottom:0;z-index:4;margin-top:auto;padding-top:14px;background:linear-gradient(to bottom,transparent,var(--bg) 22%)}
+  .count{text-align:center;font-size:11.5px;color:var(--muted);margin-bottom:8px}
+  .count b{color:var(--text);font-weight:500}
+  .tbar{display:flex;gap:8px}
+  .tbar .btn{flex:1}
+  .react{flex:none;width:54px;border-radius:16px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:22px;cursor:pointer}
+
+  /* reaction bubbles float up over the screen */
+  .bubbles{position:fixed;left:0;right:0;bottom:calc(120px + env(safe-area-inset-bottom,0px));height:0;pointer-events:none;z-index:6;max-width:460px;margin:0 auto}
+  .bub{position:absolute;bottom:0;max-width:74%;display:flex;align-items:center;gap:7px;padding:7px 12px 7px 7px;border-radius:999px;background:var(--surface2);
+       border:1px solid var(--border);font-size:12px;box-shadow:0 8px 20px rgba(0,0,0,.25);animation:floatup 3.2s ease-out forwards;white-space:nowrap}
+  .bub .pfp{width:22px;height:22px;font-size:11px}
+  .bub span{overflow:hidden;text-overflow:ellipsis}
+  @keyframes floatup{0%{opacity:0;transform:translateY(10px) scale(.9)}10%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0;transform:translateY(-120px)}}
+  .rgroups{display:grid;gap:14px;margin-top:14px;max-height:52dvh;overflow-y:auto}
+  .rgroups small{font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+  .rlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .rlist button{border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:999px;padding:8px 12px;font-family:var(--mono);font-size:12px;cursor:pointer}
+
+  /* vote */
+  .vhead{text-align:center;margin-top:4px}
+  .vhead h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,8.4vw,40px);letter-spacing:2.5px;line-height:1}
+  .vhead p{font-size:12px;color:var(--muted);margin-top:6px}
+  .vote{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .vb{border-radius:18px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);padding:12px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:var(--mono)}
+  .vb b{font-family:var(--display);font-weight:400;font-size:26px;letter-spacing:2px;line-height:1}
+  .vb .dots{display:flex;gap:3px;min-height:8px}
+  .vb .dots i{width:8px;height:8px;border-radius:50%;background:var(--vc)}
+  .vb.ap{--vc:var(--green)} .vb.ra{--vc:var(--accent)}
+  .vb.sel{border-color:var(--vc);background:color-mix(in srgb,var(--vc) 10%,var(--surface))}
+  .vb.sel b{color:var(--vc)}
+  .vrow{display:flex;gap:8px;margin-top:8px}
+
+  /* result */
+  .verdict{text-align:center;margin-top:4px}
+  .verdict h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,15vw,76px);letter-spacing:4px;line-height:.9;animation:pop .5s cubic-bezier(.2,1.5,.4,1)}
+  .verdict h1.ap{color:var(--green)} .verdict h1.ra{color:var(--accent)}
+  .verdict p{font-size:12px;color:var(--muted);margin-top:6px}
+  .sides{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .side{border-radius:14px;border:1px solid var(--border);background:var(--surface);padding:8px 10px;min-height:44px}
+  .side small{font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase}
+  .side.ap small{color:var(--green)} .side.ra small{color:var(--accent)}
+  .side div{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .side .pfp{width:24px;height:24px;font-size:11px}
+  .bottom{display:grid;gap:10px}
+
+  @media (prefers-reduced-motion:reduce){#game .gs.in,.chip.moved,.bub,.verdict h1{animation:none}}
+
+  #leaveSheet p{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px}
+  .gwait{text-align:center;font-size:12.5px;color:var(--muted);padding:12px 0}
+  .gwait::after{content:"";animation:dots 1.4s steps(4) infinite}
+</style>
+</head>
+<body>
+<div class="app" id="game">
+  <!-- 1. RANK TOGETHER -->
+  <section class="gs" id="g-build">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="t-mid"><b class="cat"></b><small>Everyone can move</small></div>
+      <div class="who" id="who"></div>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="pool-l">To place</div>
+    <div class="pool" id="pool" data-tier=""></div>
+    <div class="dock">
+      <p class="count" id="doneCount"></p>
+      <div class="tbar"><button class="react" type="button" data-react aria-label="React">😀</button><button class="btn" type="button" id="doneBtn" disabled>DONE</button></div>
+    </div>
+  </section>
+
+  <!-- 2. VOTE -->
+  <section class="gs" id="g-vote">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="t-mid"><b class="cat"></b><small>The final list</small></div>
+      <div class="who" id="who2"></div>
+    </div>
+    <div class="vhead"><h1>APPROVE OR RATIO?</h1><p>Is this list right?</p></div>
+    <div class="board ro" id="vboard"></div>
+    <div class="dock">
+      <p class="count" id="voteCount"></p>
+      <div class="vote">
+        <button class="vb ap" type="button" data-vote="ap"><b>APPROVE</b><span class="dots" id="apDots"></span></button>
+        <button class="vb ra" type="button" data-vote="ra"><b>RATIO</b><span class="dots" id="raDots"></span></button>
+      </div>
+      <div class="vrow"><button class="react" type="button" data-react aria-label="React" style="flex:1;height:44px;font-size:13px;font-family:var(--mono)">😀  React</button></div>
+    </div>
+  </section>
+
+  <!-- 3. VERDICT -->
+  <section class="gs" id="g-result">
+    <div class="bar">
+      <button class="icon-btn" type="button" data-leave aria-label="Leave"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="t-mid"><b class="cat"></b><small>The verdict</small></div>
+      <span style="width:40px"></span>
+    </div>
+    <div class="verdict"><h1 id="vTitle"></h1><p id="vSub"></p></div>
+    <div class="sides"><div class="side ap"><small>Approved</small><div id="apSide"></div></div><div class="side ra"><small>Ratio'd</small><div id="raSide"></div></div></div>
+    <div class="board ro" id="rboard"></div>
+    <div class="dock"><div class="bottom" id="resBottom"></div></div>
+  </section>
+</div>
+<div class="bubbles" id="bubbles"></div>
+
+<div class="scrim" id="gScrim"></div>
+<section class="sheet" id="reactSheet" aria-label="React"><div class="grab"></div><h3>REACT</h3><div class="rgroups" id="rgroups"></div></section>
+<section class="sheet" id="leaveSheet" aria-label="Leave"><div class="grab"></div><h3>LEAVE THE GAME?</h3>
+  <p>The others keep going without you.</p>
+  <div class="two"><button class="btn outline" type="button" data-stay>STAY</button><button class="btn" type="button" id="leaveYes">LEAVE</button></div></section>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="data/words.js"></script>
+<script src="core/core.js?v=0.2.1"></script>
+<script src="core/howto.js?v=0.2.0"></script>
+<script src="core/core-ui.js?v=0.2.3"></script>
+<script>
+(() => {
+  'use strict';
+  const C = Cinefied, UI = CinefiedUI, esc = C.esc;
+  const $ = id => document.getElementById(id);
+  const game = $('game');
+  const TIERS = ['S', 'A', 'B', 'C', 'D'];
+  const CATS = ['actors', 'actresses', 'movies', 'directors', 'characters', 'mixed'];
+  const REACTS = {
+    'On the placement': ['🔥 Idhi next level', '📈 Konchem respect ivvu bro', '📉 kinda pettali bro', '😤 Idhi insult laga undi', '🫡 sarele kani', '🤦 Idhi too much ra rey', '🧨 controversial',
+      '🔥 Absolutely S tier', "💀 No way that's S", '📈 Too low, move it up', '📉 Too high, move it down', '✅ I agree with this', '❌ Hard disagree'],
+    'Arguing': ['✅ Naa doubt confirm ayyindi', 'endhuku brooo', '😶 Nenu convince avvaled', '😑 Idhi safe play', '🫠 thappu idhi thappu', '😏 nuetral ga undali', '😭 edisinattu undhi',
+      "🤔 Let's discuss this", '👀 Controversial pick', '😭 This is criminal', '💯 Perfect placement', '🗑️ That belongs in D'],
+    'Energy': ['🔊 CHAT IS THIS REAL', "😂 I can't defend this", '🤝 We move', '⚡ Bold choice'],
+  };
+  const ALL_REACTS = new Set(Object.values(REACTS).flat());
+  const cap = s => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+
+  let V = null, shown = null, code = null, advancing = null;
+  const seenSay = {};          // uid -> last reaction time shown
+  const lastT = {};            // item id -> tier we last drew (to flash other people's moves)
+
+  // ── helpers over the room ──
+  const st = () => (V && V.room.state) || {};
+  const ph = () => (V ? V.room.phase : null);
+  const P = u => V.room.players[u];
+  const nameOf = u => (P(u) && P(u).name) || 'Player';
+  const isMe = u => V && u === V.me;
+  const online = () => V.players.filter(p => p.online !== false);
+  const av = (u, cls) => `<span class="pfp${cls ? ' ' + cls : ''}" style="--pc:${isMe(u) ? 'linear-gradient(135deg,var(--accent),var(--accent2))' : UI.avColor(u)}">${UI.initial(nameOf(u))}</span>`;
+  const items = () => Object.entries(st().items || {}).map(([id, it]) => Object.assign({ id }, it)).sort((a, b) => (a.n || 0) - (b.n || 0));
+  // DONE means "I'm happy with the list exactly as it is now": any move changes the key, so everyone's DONE resets
+  const doneKey = () => `${st().round || 1}:` + items().map(i => i.t || '-').join('');
+  const isDone = u => P(u) && P(u).done === doneKey();
+  const voteOf = u => { const v = P(u) && P(u).vote; return v && v.startsWith((st().round || 1) + ':') ? v.split(':')[1] : null; };
+
+  function show(id) {
+    if (shown === id) return;
+    shown = id;
+    document.querySelectorAll('#game .gs').forEach(s => { s.className = 'gs' + (s.id === id ? ' on in' : ''); });
+    scrollTo(0, 0);
+  }
+  const label = s => { const m = /^(.*?)\s*\((.*)\)$/.exec(s); return m ? `${esc(m[1])} <small>${esc(m[2])}</small>` : esc(s); };
+  function chip(it, ro) {
+    const moved = !ro && lastT[it.id] !== undefined && lastT[it.id] !== it.t && it.by && !isMe(it.by);
+    return `<span class="chip${moved ? ' moved' : ''}" data-id="${C.sid(it.id)}" style="--by:${moved ? UI.avColor(it.by) : 'transparent'}" title="${esc(it.s)}">${label(it.s)}</span>`;
+  }
+  function boardHTML(ro) {
+    const all = items();
+    return TIERS.map(t => `<div class="tier" data-tier="${t}" style="--tc:var(--t${t})"><span class="lab">${t}</span><div class="slots">${all.filter(i => i.t === t).map(i => chip(i, ro)).join('')}</div></div>`).join('');
+  }
+  function setHTML(el, html) { if (el.dataset.h !== html) { el.dataset.h = html; el.innerHTML = html; } }
+
+  // ══ screens ══════════════════════════════════════════════════
+  function drawBuild() {
+    if (drag) return;                       // don't redraw under a finger; it redraws when the finger lifts
+    const all = items(), left = all.filter(i => !i.t).length;
+    setHTML($('board'), boardHTML(false));
+    setHTML($('pool'), all.filter(i => !i.t).map(i => chip(i, false)).join(''));
+    all.forEach(i => { lastT[i.id] = i.t; });
+    const ons = online(), n = ons.filter(p => isDone(p.uid)).length, mine = isDone(V.me);
+    $('doneBtn').disabled = left > 0;
+    $('doneBtn').className = 'btn' + (mine ? ' outline' : '');
+    $('doneBtn').textContent = mine ? '✓ DONE · WAITING' : left ? `PLACE ${left} MORE` : 'DONE';
+    $('doneCount').innerHTML = `<b>${n}</b> of ${ons.length} done${left ? ` · ${left} left to place` : ''}`;
+    setHTML($('who'), ons.map(p => av(p.uid, isDone(p.uid) ? 'done' : '')).join(''));
+  }
+  function drawVote() {
+    setHTML($('vboard'), boardHTML(true));
+    const ons = online(), vs = ons.map(p => voteOf(p.uid));
+    const ap = vs.filter(v => v === 'ap').length, ra = vs.filter(v => v === 'ra').length, mine = voteOf(V.me);
+    $('apDots').innerHTML = '<i></i>'.repeat(ap); $('raDots').innerHTML = '<i></i>'.repeat(ra);
+    document.querySelectorAll('.vb').forEach(b => b.classList.toggle('sel', mine === b.dataset.vote));
+    $('voteCount').innerHTML = mine ? `<b>${ap + ra}</b> of ${ons.length} voted` : `Tap to vote · <b>${ap + ra}</b> of ${ons.length} voted`;
+    setHTML($('who2'), ons.map(p => av(p.uid, voteOf(p.uid) ? 'done' : '')).join(''));
+  }
+  function drawResult() {
+    const f = st().final || {};
+    const ap = Object.keys(f).filter(u => f[u] === 'ap'), ra = Object.keys(f).filter(u => f[u] === 'ra');
+    const okay = ap.length > ra.length;
+    $('vTitle').className = okay ? 'ap' : 'ra'; $('vTitle').textContent = okay ? 'APPROVED' : "RATIO'D";
+    $('vSub').textContent = `${ap.length} approve · ${ra.length} ratio${ap.length === ra.length ? ' · a tie counts as ratio' : ''}`;
+    $('apSide').innerHTML = ap.map(u => av(u)).join(''); $('raSide').innerHTML = ra.map(u => av(u)).join('');
+    setHTML($('rboard'), boardHTML(true));
+    const L = P(V.room.leader);
+    setHTML($('resBottom'), V.isLeader
+      ? `<button class="btn" type="button" data-do="new">NEW LIST</button><button class="btn outline" type="button" data-do="lobby">WAITING ROOM</button>`
+      : `<p class="gwait">Waiting for ${esc(L ? L.name : 'the leader')} to choose</p><button class="btn outline" type="button" data-leave>LEAVE</button>`);
+  }
+  function render() {
+    if (!V || !V.room.state) return;
+    document.querySelectorAll('#game .cat').forEach(e => { e.textContent = String(st().cat || '').toUpperCase(); });
+    const p = ph();
+    if (p === 'build') { drawBuild(); show('g-build'); }
+    else if (p === 'vote') { drawVote(); show('g-vote'); }
+    else if (p === 'result') { drawResult(); show('g-result'); }
+    bubbles();
+    advance();
+  }
+
+  // ══ the leader's phone moves the game along ═════════════════
+  function advance() {
+    if (!V.isLeader) return;
+    const p = ph(), ons = online(), key = doneKey() + p;
+    if (advancing === key) return;
+    if (p === 'build' && items().every(i => i.t) && ons.length && ons.every(x => isDone(x.uid))) {
+      advancing = key; C.setPhase('vote').catch(() => { advancing = null; });
+    } else if (p === 'vote' && ons.length && ons.every(x => voteOf(x.uid))) {
+      const final = {}; ons.forEach(x => { final[x.uid] = voteOf(x.uid); });
+      advancing = key; C.setPhase('result', Object.assign({}, st(), { final })).catch(() => { advancing = null; });
+    }
+  }
+  function newList(v, round) {
+    const s = (v.room.settings || {});
+    const cat = CATS.includes(s.category) ? s.category : 'actors';
+    const n = [8, 10, 12, 15].includes(Number(s.count)) ? Number(s.count) : 10;
+    const W = window.ImposterWords;
+    const pool = cat === 'mixed' ? Object.values(W).flat() : W[cat];
+    const pick = [...new Set(pool)].sort(() => Math.random() - 0.5).slice(0, n);
+    const its = {}; pick.forEach((s2, i) => { its['i' + i] = { s: s2, t: '', n: i }; });
+    return { round, cat, items: its };
+  }
+
+  // ══ dragging (finger or mouse); the page scrolls by itself near the top and bottom ══
+  let drag = null, edge = null;
+  document.addEventListener('pointerdown', e => {
+    const c = e.target.closest('#g-build .chip'); if (!c || ph() !== 'build') return;
+    e.preventDefault();
+    const g = c.cloneNode(true); g.classList.add('ghost'); g.classList.remove('moved'); document.body.appendChild(g);
+    c.classList.add('lift');
+    drag = { id: items().find(i => C.sid(i.id) === c.dataset.id).id, g, x: e.clientX, y: e.clientY };
+    moveGhost(e);
+    clearInterval(edge);
+    edge = setInterval(() => {
+      if (!drag) return;
+      const zone = 90, h = innerHeight;
+      const dy = drag.y < zone ? -(zone - drag.y) / 6 : drag.y > h - zone ? (drag.y - (h - zone)) / 6 : 0;
+      if (dy) { scrollBy(0, dy); hilite(); }
+    }, 16);
+  });
+  function zoneAt(x, y) { const el = document.elementFromPoint(x, y); return el && el.closest('#g-build .tier, #g-build .pool'); }
+  function hilite() { document.querySelectorAll('#g-build .hot').forEach(z => z.classList.remove('hot')); const z = zoneAt(drag.x, drag.y); if (z) z.classList.add('hot'); }
+  function moveGhost(e) { drag.x = e.clientX; drag.y = e.clientY; drag.g.style.left = e.clientX + 'px'; drag.g.style.top = e.clientY + 'px'; hilite(); }
+  document.addEventListener('pointermove', e => { if (drag) moveGhost(e); });
+  const drop = e => {
+    if (!drag) return;
+    clearInterval(edge);
+    const z = e && e.type === 'pointerup' ? zoneAt(e.clientX, e.clientY) : null;
+    drag.g.remove(); document.querySelectorAll('.hot').forEach(x => x.classList.remove('hot'));
+    const id = drag.id; drag = null;
+    const it = (st().items || {})[id];
+    if (z && it && ph() === 'build') {
+      const nt = z.dataset.tier || '';
+      if (it.t !== nt) {
+        lastT[id] = nt;
+        // each item saves on its own, so moves by different people never undo each other
+        firebase.database().ref(`rooms/${code}/state/items/${id}`).update({ t: nt, by: V.me })
+          .catch(() => UI.say("That move didn't go through"));
+      }
+    }
+    $('board').dataset.h = ''; $('pool').dataset.h = '';
+    drawBuild();
+  };
+  document.addEventListener('pointerup', drop);
+  document.addEventListener('pointercancel', drop);
+
+  // ══ reactions: preset lines float up as bubbles for everyone ══
+  function bubbles() {
+    const now = Date.now();
+    V.players.forEach(p => {
+      const s = p.say; if (!s) return;
+      const i = s.indexOf('|'), ts = Number(s.slice(0, i)), text = s.slice(i + 1);
+      if (!(ts > (seenSay[p.uid] || 0))) return;
+      const fresh = seenSay[p.uid] !== undefined && now - ts < 15000;
+      seenSay[p.uid] = ts;
+      if (!fresh || !ALL_REACTS.has(text)) return;
+      const b = document.createElement('div'); b.className = 'bub';
+      b.style.left = (8 + Math.random() * 30) + '%';
+      b.innerHTML = `${av(p.uid)}<span><b style="font-weight:500">${isMe(p.uid) ? 'You' : esc(p.name)}</b> ${esc(text)}</span>`;
+      $('bubbles').appendChild(b); setTimeout(() => b.remove(), 3300);
+    });
+  }
+  $('rgroups').innerHTML = Object.entries(REACTS).map(([g, list]) => `<div><small>${esc(g)}</small><div class="rlist">${list.map(r => `<button type="button" data-say="${esc(r)}">${esc(r)}</button>`).join('')}</div></div>`).join('');
+
+  // ══ touches ══════════════════════════════════════════════════
+  const closeSheets = () => { ['reactSheet', 'leaveSheet'].forEach(id => $(id).classList.remove('open')); $('gScrim').classList.remove('open'); };
+  const openSheet = id => { $(id).classList.add('open'); $('gScrim').classList.add('open'); };
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.closest('#gScrim') || t.closest('[data-stay]')) return closeSheets();
+    if (t.closest('#leaveYes')) { closeSheets(); return void UI.leaveGame(); }
+    const say = t.closest('[data-say]');
+    if (say) { closeSheets(); if (V) seenSay[V.me] = seenSay[V.me] || 0; C.updateMe({ say: `${Date.now()}|${say.dataset.say}` }).catch(() => {}); return; }
+    if (!t.closest('#game') || !V) return;
+    if (t.closest('[data-leave]')) return openSheet('leaveSheet');
+    if (t.closest('[data-react]')) return openSheet('reactSheet');
+    if (t.closest('#doneBtn') && !$('doneBtn').disabled) { C.updateMe({ done: isDone(V.me) ? '' : doneKey() }).catch(() => {}); return; }
+    const vb = t.closest('[data-vote]');
+    if (vb && ph() === 'vote') { C.updateMe({ vote: `${st().round || 1}:${vb.dataset.vote}` }).catch(() => {}); return; }
+    const d = t.closest('[data-do]');
+    if (d && d.dataset.do === 'new') return void C.setPhase('build', newList(V, (st().round || 1) + 1)).catch(err => UI.say(C.message(err)));
+    if (d && d.dataset.do === 'lobby') return void C.setPhase('waiting', null).catch(err => UI.say(C.message(err)));
+  });
+
+  // ══ hand-off with the core ═══════════════════════════════════
+  // ── how to play: the animated steps (drawn by core/howto.js) ──
+  const HOWTO = {
+    steps: [
+      { d: 3200, t: 'Everyone gets the same list: actors, movies, directors and more.' },
+      { d: 5600, t: 'Drag each name into a tier, S at the top, D at the bottom. Anyone can move anything, so argue it out.' },
+      { d: 3400, t: 'When everything is placed and everyone taps DONE, the list is final.' },
+      { d: 4200, t: "Everyone votes APPROVE or RATIO. More approves than ratios and the list is APPROVED; otherwise it's RATIO'D." }
+    ],
+    build(svg, K) {
+      const { el, op, cl, pr, ease, back, lerp, fitLines, Phone, Player, Chip, Label, WidePill, Ripple, COLORS } = K;
+      const TI = [['S', 'var(--accent)'], ['A', 'var(--accent2)'], ['B', 'var(--yellow)'], ['C', 'var(--green)'], ['D', 'var(--blue)']];
+      const Y = i => 26 + i * 30;
+      TI.forEach(([t, c], i) => {
+        el('rect', { x: 14, y: Y(i), width: 292, height: 26, rx: 6, fill: 'var(--surface)', stroke: 'var(--border)' }, svg);
+        el('rect', { x: 14, y: Y(i), width: 28, height: 26, rx: 6, fill: c }, svg);
+        el('text', { class: 'd', 'text-anchor': 'middle', x: 28, y: Y(i) + 18, 'font-size': 16, fill: '#16161f' }, svg, t);
+      });
+      const names = ['Prabhas', 'Mahesh', 'Nani', 'Ravi Teja'];
+      const pool = [[58, 196], [130, 196], [196, 196], [262, 196]];
+      // where each name ends up: [tier, x]
+      const dest = [[0, 82], [1, 82], [2, 82], [3, 82]];
+      const chips = names.map(() => Chip(svg));
+      const fing = el('circle', { r: 7, opacity: 0 }, svg);
+      const pl = el('g', {}, svg), P = [[100, 228, 'R', 0], [160, 228, 'S', 1], [220, 228, 'B', 2]].map(([x, y, l, i]) => Player(pl, x, y, l, COLORS[i]));
+      const say = Chip(svg), stamp = Label(svg), votes = P.map(() => Chip(svg)), done = P.map(() => Chip(svg));
+      const pop = (u, a) => back(pr(u, a, 260));
+      const place = (i, k, from, to) => { const x = lerp(from[0], to[0], ease(k)), y = lerp(from[1], to[1], ease(k)); chips[i].set(names[i], x, y, 1); return [x, y]; };
+      const at = (i, tier) => [dest[i][1] + 0, Y(tier) + 13];
+      return (s, u) => {
+        chips.forEach(c => c.hide()); say.hide(); stamp.hide(); votes.forEach(c => c.hide()); done.forEach(c => c.hide()); op(fing, 0);
+        P.forEach(p => p.set());
+        if (s === 0) {
+          names.forEach((n, i) => chips[i].set(n, pool[i][0], pool[i][1], pop(u, 300 + i * 250)));
+        } else if (s === 1) {
+          // R drags Prabhas to S, S drags Mahesh to A, B drags Nani to B and Ravi Teja to C; then S moves Nani up to A
+          const plan = [[0, 0, 0, 200], [1, 1, 1, 1100], [2, 2, 2, 2000], [3, 3, 2, 2700]];
+          plan.forEach(([i, tier, who, a]) => {
+            const k = pr(u, a, 700), p = place(i, k, pool[i], at(i, tier));
+            if (k > 0 && k < 1) { op(fing, 1); fing.setAttribute('cx', p[0] - 26); fing.setAttribute('cy', p[1] + 6); fing.setAttribute('fill', COLORS[who]); P[who].set({ ring: 1 }); }
+          });
+          if (u > 3500) {
+            const k = pr(u, 4100, 700), from = at(2, 2), to = [160, Y(1) + 13];
+            const p = place(2, k, from, to);
+            say.set('Nani is A tier!', 230, 196, pop(u, 3500)); P[1].set({ ring: 1 });
+            if (k > 0 && k < 1) { op(fing, 1); fing.setAttribute('cx', p[0] - 26); fing.setAttribute('cy', p[1] + 6); fing.setAttribute('fill', COLORS[1]); }
+          }
+        } else {
+          [[0, 0, 82], [1, 1, 82], [2, 1, 160], [3, 3, 82]].forEach(([i, t, x]) => chips[i].set(names[i], x, Y(t) + 13, 1));
+          if (s === 2) {
+            P.forEach((p, i) => { if (u > 300 + i * 600) { p.set({ ring: 1, ringC: 'var(--green)' }); done[i].set('DONE', p.x, 200, pop(u, 300 + i * 600), 'ok'); } });
+            if (u > 2300) stamp.set('FINAL', 236, 106, 34, 'var(--accent2)', { s: pop(u, 2300), maxW: 120 });
+          } else {
+            const v = ['APPROVE', 'APPROVE', 'RATIO'];
+            P.forEach((p, i) => { if (u > 300 + i * 500) { votes[i].set(v[i], p.x, 200, pop(u, 300 + i * 500), v[i] === 'RATIO' ? 'acc' : 'ok'); p.set({ ring: 1, ringC: v[i] === 'RATIO' ? 'var(--accent)' : 'var(--green)' }); } });
+            if (u > 2000) stamp.set('APPROVED', 236, 106, 34, 'var(--green)', { s: pop(u, 2000), maxW: 120 });
+          }
+        }
+      };
+    }
+  };
+
+  UI.mount({
+    game: {
+      howto: HOWTO,
+      id: 'tierd', name: "Tier'd", shelf: 'Play together', color: 'var(--accent2)', glyph: 'T',
+      pitch: 'Rank Telugu cinema together, S to D. Then everyone votes: approved, or ratio\'d?',
+      facts: ['2 to 8 players', 'Each on own phone', '~10 min'],
+      rules: ['Everyone gets the same list: actors, movies, directors and more.',
+              'Drag each name into a tier, S at the top, D at the bottom. Anyone can move anything, so argue it out.',
+              'When everything is placed and everyone taps DONE, the list is final.',
+              "Everyone votes APPROVE or RATIO. More approves than ratios and the list is APPROVED; otherwise it's RATIO'D."],
+      min: 2, max: 8,
+      settings: [
+        { key: 'category', label: 'Category', options: CATS, default: 'actors', show: cap },
+        { key: 'count', label: 'Items', options: [8, 10, 12, 15], default: 10, summary: v => `${v} items` },
+      ],
+      startPhase: 'build',
+      startState: v => newList(v, 1),
+    },
+    gameNames: { pictionary: 'Pictionary', imposter: 'Imposter', tictactoe: 'Tic Tac Toe', tierd: "Tier'd", cluepool: 'Clue Pool' },
+    onStart: v => { V = v; code = v.code; shown = null; advancing = null; game.classList.add('on'); V.players.forEach(p => { seenSay[p.uid] = Number(String(p.say || '0').split('|')[0]) || 0; }); render(); },
+    onUpdate: v => { V = v; code = v.code; render(); },
+    onLobby: () => { V = null; shown = null; closeSheets(); game.classList.remove('on'); },
+  });
+})();
+</script>
+</body>
+</html>
